@@ -7,6 +7,9 @@ const nextConfig: NextConfig = {
       'lib/server/agent-runtime/import-pptx-worker.mjs',
       'skills/openmaic/**',
       'skills/agent-runtime/**',
+      // sharp loads libvips dynamically; preserve pnpm's native runtime files
+      // in the standalone server used by PDF image extraction.
+      'node_modules/.pnpm/@img+sharp-libvips-*/node_modules/@img/sharp-libvips-*/lib/**/*',
     ],
   },
   typescript: {
