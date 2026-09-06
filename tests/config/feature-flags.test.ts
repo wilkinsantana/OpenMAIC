@@ -79,9 +79,9 @@ describe('isMaicEditorEnabled', () => {
     }
   });
 
-  it('returns false when the env var is unset', () => {
+  it('returns true when the env var is unset', () => {
     delete process.env[FLAG];
-    expect(isMaicEditorEnabled()).toBe(false);
+    expect(isMaicEditorEnabled()).toBe(true);
   });
 
   it("returns true for 'true'", () => {
