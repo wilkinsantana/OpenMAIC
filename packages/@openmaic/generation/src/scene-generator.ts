@@ -5,7 +5,6 @@
  * from scene outlines.
  */
 
-import { parseCodeExercise, renderCodeExerciseHtml } from './code-exercise.js';
 import { nanoid } from 'nanoid';
 import katex from 'katex';
 import type {
@@ -1241,15 +1240,6 @@ export async function generateWidgetContent(
 
   log.info(`Generating ${widgetType} widget for: ${outline.title}`);
   const response = await aiCall(prompts.system, prompts.user);
-  if (widgetType === 'code') {
-    const config = parseCodeExercise(parseJsonResponse(response));
-    if (!config) {
-      log.error(`Invalid structured exercise for: ${outline.title}`);
-      options.onFailure?.({ code: 'invalid-model-output' });
-      return null;
-    }
-    return { html: renderCodeExerciseHtml(config), widgetType, widgetConfig: { ...config } };
-  }
   const html = extractHtml(response, log);
 
   if (!html) {

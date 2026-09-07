@@ -371,10 +371,10 @@ test('a runaway pure-code exercise can be stopped without losing the editor', as
   await expect(frame.getByRole('button', { name: 'Run & Verify', exact: true })).toBeEnabled();
 });
 
-test('legacy styles stay inside the runtime while the shared shell reports original tests', async ({
+test('original lesson content and subject-specific controls survive action-bar integration', async ({
   page,
 }) => {
-  const original = `<html><head><style>body{max-width:400px;margin:auto}header{height:300px}button{margin-left:200px}</style></head><body><header><h1>Old heading</h1></header><section class="mental-model"><p>The DOM returns null when an ID is missing.</p></section><section><h3>Target HTML</h3><pre>&lt;div id="user-status-badge"&gt;Offline&lt;/div&gt;</pre></section><textarea id="code-input">return false</textarea><button id="run-btn" onclick="document.querySelector('.test-card').textContent='Test 1 PASSED';document.getElementById('output').textContent='Original runner finished'">Run tests</button><div class="test-card">Test 1 IDLE</div><pre id="output"></pre><script id="widget-config" type="application/json">{"type":"code","description":"Find the broken ID.","hints":["Look at the DOM"],"solution":"return true"}</script></body></html>`;
+  const original = `<html><head><style>body{max-width:400px;margin:auto}.sample{color:rgb(52,211,153);background:#080f1c}.badge{border-radius:8px;background:#164e63}</style></head><body><header><h1>Growing herbs</h1></header><main><p>Check the soil before watering.</p><pre class="sample"><code>&lt;div id="plant"&gt;Basil&lt;/div&gt;</code></pre><button class="badge" id="water" onclick="this.textContent='Watered'">Water plant</button><textarea id="code-input">return false</textarea><div data-maic-actions><button id="run-btn" onclick="document.querySelector('.test-card').textContent='Test 1 PASSED'">Run tests</button></div><div class="test-card">Test 1 IDLE</div></main><script id="widget-config" type="application/json">{"type":"code","hints":["Look at the soil"],"solution":"return true"}</script></body></html>`;
   await page.goto('/');
   await page.setContent(
     '<iframe sandbox="allow-scripts" style="width:100%;height:850px;border:0"></iframe>',
@@ -383,40 +383,25 @@ test('legacy styles stay inside the runtime while the shared shell reports origi
     (el, html) => {
       (el as HTMLIFrameElement).srcdoc = html;
     },
-    buildExerciseDocument(original, { ...en.exerciseSupport, sceneTitle: 'Legacy lesson' }),
+    buildExerciseDocument(original, en.exerciseSupport),
   );
   const frame = page.frameLocator('iframe').first();
-  await expect(frame.locator('#description')).toHaveText('Find the broken ID.');
-  await expect(frame.locator('#lesson-context')).toContainText('The DOM returns null');
-  await expect(frame.locator('#lesson-context pre')).toHaveText(
-    '<div id="user-status-badge">Offline</div>',
-  );
-  await expect(frame.locator('#lesson-context')).not.toContainText('return true');
-  await expect(frame.locator('#lesson-context')).not.toContainText('Test 1 IDLE');
-  await frame.getByRole('button', { name: 'Run & Verify', exact: true }).click();
-  await expect(frame.locator('.test[data-state="passed"]')).toHaveCount(1);
-  await expect(frame.locator('#output')).toHaveText('Original runner finished');
-  await expect(frame.locator('.test-badge')).toHaveText('✓ Passed');
-  await expect(frame.locator('#test-summary')).toHaveText('1/1 Passing');
-  await expect(frame.locator('#output')).toHaveCSS('color', 'rgb(52, 211, 153)');
-  await frame.getByRole('button', { name: 'Show solution', exact: true }).click();
-  await expect(frame.locator('#reference-solution .cm-keyword')).toHaveText('return');
+  await expect(frame.locator('.sample code')).toHaveText('<div id="plant">Basil</div>');
+  await expect(frame.locator('.sample')).toHaveCSS('color', 'rgb(52, 211, 153)');
+  await frame.getByRole('button', { name: 'Water plant', exact: true }).click();
+  await expect(frame.locator('#water')).toHaveText('Watered');
+  await expect(frame.locator('[data-maic-action-bar] #run-btn')).toHaveCount(1);
+  await frame.locator('#run-btn').click();
+  await expect(frame.locator('.test-card')).toHaveText('Test 1 PASSED');
+  await expect(frame.locator('#legacy-frame, #lesson-context')).toHaveCount(0);
   expect(
-    await frame
-      .locator('[data-maic-hints-area]')
-      .evaluate((el) => el.getBoundingClientRect().height),
-  ).toBeGreaterThan(70);
-  await page.screenshot({ path: '/tmp/openmaic-vivid-desktop.png' });
-  expect(
-    await frame.locator('header').evaluate((el) => el.getBoundingClientRect().height),
-  ).toBeLessThan(100);
-  await expect(frame.locator('#legacy-frame')).toBeHidden();
+    await frame.locator('body').evaluate((el) => el.getBoundingClientRect().width),
+  ).toBeGreaterThan(1000);
   await page.setViewportSize({ width: 540, height: 950 });
   expect(await frame.locator('body').evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(
     true,
   );
-  await expect(frame.getByRole('button', { name: 'Run & Verify', exact: true })).toBeVisible();
-  await page.screenshot({ path: '/tmp/openmaic-shared-shell-mobile.png' });
+  await page.screenshot({ path: '/tmp/openmaic-original-content.png' });
 });
 
 for (const language of ['typescript', 'python'])

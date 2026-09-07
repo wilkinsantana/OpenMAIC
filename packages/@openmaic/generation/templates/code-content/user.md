@@ -32,4 +32,9 @@ Create a code playground widget for: {{title}}
 
 ---
 
-Return the structured exercise JSON contract. Include a clear standalone task description, runnable starter code, a complete reference solution, progressive hints, and executable tests. OpenMAIC renders the interface; do not design a page.
+Generate a complete, interactive HTML code editor with:
+1. Code editor with syntax highlighting
+2. Run button with output display
+3. Test case validation
+4. Progressive hint system
+5. Embedded widget configuration JSON

@@ -24,11 +24,11 @@ export function buildExerciseDocument(
     /* Legacy runner reads its own config. */
   }
   const config = parseCodeExercise(data);
-  const document = config
-    ? renderCodeExerciseHtml(config)
-    : renderCodeExerciseHtml(
-        { type: 'code', title: labels.sceneTitle },
-        patchHtmlForIframe(repaired),
-      );
-  return patchHtmlForIframe(document, labels);
+  // Original HTML remains the live lesson, including its custom controls and styles.
+  // Retain compatibility with courses already generated as structured exercise data.
+  const document = patchHtmlForIframe(config ? renderCodeExerciseHtml(config) : repaired, labels);
+  if (config) return document;
+  const sizing =
+    '<style data-maic-viewport-sizing>html,body{width:100%!important;max-width:none!important;min-height:100%!important}body>main,body>.container,body>.app-container{width:100%!important;max-width:none!important;box-sizing:border-box}</style>';
+  return document.replace(/<\/head\s*>/i, sizing + '</head>');
 }

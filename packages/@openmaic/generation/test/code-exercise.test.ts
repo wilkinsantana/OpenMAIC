@@ -35,20 +35,17 @@ describe('structured exercises', () => {
     expect(html).not.toContain('<script>bad()');
     expect(html).toContain('data-maic-exercise-shell="1"');
   });
-  it('generates a fixed shell from data and rejects the old arbitrary HTML response', async () => {
+  it('preserves authored lesson HTML during generation', async () => {
     const outline = {
       ...widgetOutline(),
       widgetType: 'code' as const,
       widgetOutline: { language: 'javascript' as const },
     };
-    const result = await generateWidgetContent(outline, async () => JSON.stringify(exercise));
-    expect(result?.widgetConfig?.exerciseVersion).toBe(1);
-    expect(result?.html).toContain('data-maic-exercise-shell');
-    expect(
-      await generateWidgetContent(
-        outline,
-        async () => '<html><body>Unstructured playground</body></html>',
-      ),
-    ).toBeNull();
+    const html =
+      '<html><body><h1>Growing herbs</h1><p>Check soil moisture.</p><button onclick="this.textContent=123">Try it</button></body></html>';
+    const result = await generateWidgetContent(outline, async () => html);
+    expect(result?.html).toContain('Check soil moisture.');
+    expect(result?.html).toContain('onclick="this.textContent=123"');
+    expect(result?.html).not.toContain('data-maic-exercise-shell');
   });
 });

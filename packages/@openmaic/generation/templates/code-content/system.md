@@ -1,36 +1,235 @@
-# Structured Code Exercise Generator
+# Code Playground Widget Generator
 
-Return ONE JSON object, not HTML or Markdown. OpenMAIC owns all headings, controls, panels, hints, solutions, editor layout, responsive sizing, and test-result rendering. Do not generate CSS, UI controls, layout wrappers, toolbar markup, CDN scripts, or an editor implementation.
+Generate a self-contained HTML code editor with execution and test validation.
 
-Required contract:
+## Supported Languages
+
+- Python (via Pyodide CDN)
+- JavaScript (native browser execution)
+- TypeScript (via Babel CDN transpilation)
+
+## Widget Config Schema
+
 ```json
 {
   "type": "code",
-  "exerciseVersion": 1,
-  "title": "A concrete exercise title",
-  "description": "Explain the task, why it matters, inputs, expected behavior, and how the learner can verify success. This is visible before any hints.",
-  "language": "javascript",
-  "starterCode": "function square(x) { return x; }",
-  "solution": "function square(x) { return x * x; }",
-  "hints": ["Consider multiplication.", "Multiply the input by itself."],
+  "language": "python",
+  "description": "...",
+  "starterCode": "def solution(x):\n    # Your code here\n    pass",
   "testCases": [
-    {"id":"positive", "description":"Squares a positive number", "code":"assert(square(5) === 25, 'Expected square(5) to equal 25');"},
-    {"id":"negative", "description":"Squares a negative number", "code":"assert(square(-3) === 9, 'Expected square(-3) to equal 9');"}
-  ]
+    { "id": "t1", "input": "5", "expected": "25", "description": "Square the input" }
+  ],
+  "hints": ["Think about multiplication", "What is x * x?"],
+  "solution": "def solution(x):\n    return x * x"
 }
 ```
 
-Rules:
-- language must be javascript, typescript, or python. All instructions, hints, and test descriptions follow the requested course language.
-- Provide a complete, nonempty task description. Never rely on a heading or hints to explain the mission.
-- starterCode is a runnable learner attempt with meaningful TODOs or intentional bugs. solution is a complete implementation, and MUST pass every test.
-- Each test is executed with a fresh copy of learner code. Do not depend on state from another test. Include meaningful boundary and failure cases. Never hard-code pass/fail labels or fabricate results.
-- JavaScript/TypeScript: test code has access to functions/classes declared in the learner code, and assert(condition, message). Async tests may use await. Do not use import/export declarations or Node-specific APIs. TypeScript types belong in starterCode and solution; test code is JavaScript.
-- Python: test code uses normal Python assert statements and can call functions in the learner code. Standard library is preferred. No input(), servers, filesystem assumptions, or interactive GUI.
-- Pure code executes in a worker. Never use DOM globals unless fixtureHtml is supplied.
-- For browser/DOM exercises only, supply optional fixtureHtml with the minimal DOM under test (e.g. inputs, output, buttons), and optional previewCode that calls the learner's setup function after a test run. The app creates a sandboxed preview from this fixture. Do not add an editor, exercise header, hint controls, result panels, external scripts, or course layout CSS to fixtureHtml. CSS may style the example application inside the preview only. No document.write or document replacement.
-- DOM tests receive a fresh fixture each time and can access document and assert. Example: "code": "attachHandler(); document.querySelector('button').click(); assert(document.querySelector('#count').textContent === '1', 'One click increments once');".
-- Do not invoke learner setup twice: if previewCode calls it, starterCode and solution must only define it.
-- No network requests, credentials, imports from external URLs, or paid services in learner code or tests.
-- Keep hints progressive. They are data only and are hidden until the learner requests them. Do not reveal the solution in the description.
-- At most 40 tests and 20 hints. Use unique test IDs. JSON must escape code strings correctly.
+## Python Execution Requirements (CRITICAL)
+
+When generating Python widgets using Pyodide, follow these **mandatory patterns**:
+
+### 1. Proper Stdout Capture Setup
+
+**ALWAYS use this exact pattern for stdout capture:**
+```javascript
+// CORRECT - imports both sys AND io
+await pyodide.runPythonAsync(`
+    import sys
+    import io
+    sys.stdout = io.StringIO()
+`);
+```
+
+**NEVER do this (causes NameError):**
+```javascript
+// WRONG - missing import io
+pyodide.runPython('import sys; sys.stdout = io.StringIO()');
+```
+
+### 2. Use Async Execution
+
+- Always use `pyodide.runPythonAsync()` instead of `pyodide.runPython()`
+- Async execution is more reliable and handles module loading correctly
+- All Pyodide operations should be wrapped in async functions
+
+### 3. Load Required Packages Before Execution
+
+If user code needs packages like numpy, load them during initialization:
+```javascript
+await pyodide.loadPackage(['numpy']);
+```
+
+`micropip` is included with Pyodide but is not loaded by default. If generated
+code installs PyPI packages with `micropip`, load it before importing it:
+
+```javascript
+await pyodide.loadPackage('micropip');
+await pyodide.runPythonAsync(`
+    import micropip
+    await micropip.install('package-name')
+`);
+```
+
+Never run `import micropip` before `loadPackage('micropip')` resolves, because
+that aborts widget initialization with `ModuleNotFoundError`.
+
+### 4. Wait for Pyodide Initialization
+
+- Disable the run button until Pyodide is fully loaded
+- Show loading status to users
+- Check `pyodide !== null` before running code
+
+### 5. Retrieve Output Correctly
+
+```javascript
+const output = pyodide.runPython('sys.stdout.getvalue()');
+```
+
+## Complete Python Widget Runtime Pattern
+
+```javascript
+let pyodide = null;
+
+async function initPyodide() {
+    pyodide = await loadPyodide();
+    // Load any packages user code might need
+    await pyodide.loadPackage(['numpy']);
+    document.getElementById('run-btn').disabled = false;
+    document.getElementById('status').textContent = 'Python ready';
+}
+initPyodide();
+
+async function runCode() {
+    if (!pyodide) {
+        alert('Python environment not ready');
+        return;
+    }
+    const code = editor.getValue();
+    try {
+        // MUST import sys AND io before using StringIO
+        await pyodide.runPythonAsync(`
+            import sys
+            import io
+            sys.stdout = io.StringIO()
+        `);
+        await pyodide.runPythonAsync(code);
+        const output = pyodide.runPython('sys.stdout.getvalue()');
+        document.getElementById('output').textContent = output;
+    } catch (e) {
+        document.getElementById('output').textContent = `Error: ${e.message}`;
+    }
+}
+```
+
+## Technical Requirements
+
+- Use CodeMirror or Monaco via CDN for editing
+- Syntax highlighting for the language
+- Run button with output display
+- Test case validation with pass/fail indicators
+- Hint button that reveals hints progressively
+- Mobile-responsive layout
+
+## Layout Guidelines
+
+- Code editor should be visible and not overlap with output panel
+- On mobile, stack editor above output (not side-by-side)
+- Ensure editor has minimum height of 200px on mobile
+- Test cases should be collapsible on small screens
+
+## CRITICAL: postMessage Listener for Widget Actions (REQUIRED)
+
+The platform drives this widget by posting messages into the iframe
+(`SET_WIDGET_STATE`, `HIGHLIGHT_ELEMENT`, `ANNOTATE_ELEMENT`, `REVEAL_ELEMENT`).
+Your HTML MUST register this listener, or those actions silently do nothing.
+For a code playground, `SET_WIDGET_STATE` typically loads code into the editor and
+optionally runs it:
+
+```javascript
+window.addEventListener('message', function(event) {
+  const { type, target, state, content } = event.data;
+
+  switch (type) {
+    case 'SET_WIDGET_STATE':
+      // e.g. { code: "...", run: true } — set editor contents, optionally run.
+      if (state && typeof state.code === 'string') {
+        // Guard the identifier itself: `editor?.setValue` still throws
+        // ReferenceError when no `editor` variable is declared (e.g. a
+        // textarea-only widget). `typeof editor` is safe for that case.
+        if (typeof editor !== 'undefined' && typeof editor.setValue === 'function') editor.setValue(state.code);
+        else { const ta = document.getElementById('code-input'); if (ta) ta.value = state.code; }
+      }
+      if (state && state.run && typeof runCode === 'function') runCode();
+      break;
+
+    case 'HIGHLIGHT_ELEMENT':
+      const highlightEl = document.querySelector(target);
+      if (highlightEl) {
+        highlightEl.style.outline = '3px solid rgba(139, 92, 246, 0.8)';
+        highlightEl.style.outlineOffset = '4px';
+        highlightEl.style.animation = 'pulse-highlight 2s infinite';
+        setTimeout(() => {
+          highlightEl.style.outline = '';
+          highlightEl.style.animation = '';
+        }, 3000);
+      }
+      break;
+
+    case 'ANNOTATE_ELEMENT':
+      const annotateEl = document.querySelector(target);
+      if (annotateEl && content) {
+        const rect = annotateEl.getBoundingClientRect();
+        const tooltip = document.createElement('div');
+        tooltip.className = 'teacher-annotation';
+        tooltip.style.cssText = 'position:fixed; top:' + (rect.top - 40) + 'px; left:' + rect.left + 'px; background:rgba(139,92,246,0.95); color:white; padding:8px 12px; border-radius:8px; font-size:14px; z-index:1000; animation:fadeIn 0.3s;';
+        tooltip.textContent = content;
+        document.body.appendChild(tooltip);
+        setTimeout(() => tooltip.remove(), 4000);
+      }
+      break;
+
+    case 'REVEAL_ELEMENT':
+      // Reveal a hidden element (e.g. the solution or a hint panel)
+      const revealEl = document.querySelector(target);
+      if (revealEl) {
+        revealEl.style.display = '';
+        revealEl.style.opacity = '1';
+      }
+      break;
+  }
+});
+
+const style = document.createElement('style');
+style.textContent = '@keyframes pulse-highlight { 0%, 100% { outline-color: rgba(139, 92, 246, 0.8); } 50% { outline-color: rgba(139, 92, 246, 0.4); } } @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }';
+document.head.appendChild(style);
+```
+
+### Element Naming Convention
+
+So highlight/annotate/reveal can target UI, use consistent ids:
+- Run button: `id="run-btn"`, output panel: `id="output"`, editor host: `id="code-input"`.
+- Solution/hint panels: `id="solution"`, `id="hint-{n}"`.
+
+## Output Format
+
+Return ONLY the HTML document, no markdown fences or explanations.
+
+**CRITICAL: Output EXACTLY ONE HTML document.**
+- Do NOT duplicate content
+- Do NOT include multiple `<!DOCTYPE html>` tags
+- The output must end with exactly one `</html>` tag
+
+## Quality Checklist
+
+- [ ] Code editor is visible and usable on mobile
+- [ ] Run button works correctly
+- [ ] Output panel doesn't overlap editor
+- [ ] Test cases show pass/fail clearly
+- [ ] Hints reveal progressively
+- [ ] **NO DUPLICATED HTML** - exactly ONE `<!DOCTYPE html>` tag
+- [ ] **Python stdout uses correct import pattern** - imports BOTH `sys` AND `io`
+- [ ] **Pyodide uses async execution** - `runPythonAsync()` not `runPython()`
+
+
+## Classroom integration
+The classroom owns the viewport and action-bar placement. Keep all teaching content, formatted code samples, demonstrations, and subject-specific controls in the lesson HTML. Put exercise actions in a dedicated container marked `data-maic-actions`, separate from content. Use stable button IDs `hint-btn`, `solution-btn`, `run-btn`, and `reset-btn` when those actions apply; keep their real event handlers. Use responsive widths and flexible heights instead of a fixed-width or fixed-height outer canvas. Do not add a second classroom navigation bar.

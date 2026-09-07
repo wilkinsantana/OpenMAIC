@@ -1,3 +1,7 @@
+## Updated direction: preserve authored lessons
+
+The active renderer displays original lesson HTML directly in the existing sandbox. It no longer extracts instructional text or embeds the whole lesson inside a second exercise shell. Classroom integration adds the exercise action bar and outer viewport sizing. New generation again returns complete HTML with stable action identifiers; structured exercise rendering remains only for compatibility with courses already saved in that format. The historical design below describes the superseded wrapping approach.
+
 # Shared exercise renderer
 
 Code exercises now separate content from presentation. The `code-content` generation prompt returns `exerciseVersion: 1` JSON. The generation package validates it and builds HTML with the app-owned renderer. When opening a saved structured exercise, the classroom reconstructs its shell from the data using the current renderer, so UI improvements do not require regenerating a course.
