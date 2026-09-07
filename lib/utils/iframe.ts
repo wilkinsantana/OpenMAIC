@@ -44,6 +44,50 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>`;
 
+/** Keep authored floating feedback inside the sandbox viewport, not the parent page. */
+const FLOATING_FEEDBACK_SHIM = `<script data-maic-floating-feedback>
+(function () {
+  var pending = false;
+  function set(el, key, value) { if (el.style[key] !== value) el.style[key] = value; }
+  function contain() {
+    pending = false;
+    var width = document.documentElement.clientWidth;
+    var height = document.documentElement.clientHeight;
+    if (!width || !height) return;
+    document.querySelectorAll('.teacher-annotation, [role="tooltip"], .toast, [data-toast]').forEach(function (el) {
+      var css = getComputedStyle(el);
+      // Leave normal-flow feedback and authored modal/dialog layouts alone.
+      if (css.position !== 'fixed' || css.display === 'none' || el.hidden) return;
+      if (el.classList.contains('teacher-annotation') && !el.style.width) set(el, 'width', 'max-content');
+      set(el, 'boxSizing', 'border-box');
+      set(el, 'maxWidth', Math.max(1, width - 16) + 'px');
+      set(el, 'maxHeight', Math.max(1, height - 16) + 'px');
+      set(el, 'overflowWrap', 'anywhere');
+      set(el, 'whiteSpace', 'normal');
+      set(el, 'overflow', 'auto');
+      var rect = el.getBoundingClientRect();
+      var dx = rect.left < 8 ? 8 - rect.left : rect.right > width - 8 ? width - 8 - rect.right : 0;
+      var dy = rect.top < 8 ? 8 - rect.top : rect.bottom > height - 8 ? height - 8 - rect.bottom : 0;
+      if (Math.abs(dx) > 0.5) {
+        set(el, 'width', rect.width + 'px');
+        set(el, 'right', 'auto');
+        set(el, 'left', ((Number.isFinite(parseFloat(css.left)) ? parseFloat(css.left) : rect.left) + dx) + 'px');
+      }
+      if (Math.abs(dy) > 0.5) {
+        set(el, 'bottom', 'auto');
+        set(el, 'top', ((Number.isFinite(parseFloat(css.top)) ? parseFloat(css.top) : rect.top) + dy) + 'px');
+      }
+    });
+  }
+  function schedule() { if (!pending) { pending = true; requestAnimationFrame(contain); } }
+  document.addEventListener('DOMContentLoaded', function () {
+    new MutationObserver(schedule).observe(document.body, {childList:true, subtree:true, attributes:true, characterData:true});
+    schedule();
+  });
+  window.addEventListener('resize', schedule);
+})();
+</script>`;
+
 const STORAGE_SHIM = `<script data-iframe-storage-shim>
 (function () {
   function makeStore() {
@@ -340,6 +384,7 @@ export function patchHtmlForIframe(html: string, exerciseLabels?: ExerciseSuppor
     html,
     injection +
       INLINE_CALLBACK_SHIM +
+      FLOATING_FEEDBACK_SHIM +
       PAGE_ARROW_SHIM +
       (exerciseLabels ? exerciseSupportScript(exerciseLabels) : ''),
   );

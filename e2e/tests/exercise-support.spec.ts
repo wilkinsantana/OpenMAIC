@@ -464,3 +464,33 @@ test('a generated start button falls back to its window callback when a global l
   await expect(frame.locator('#lexical')).toHaveText('Lexical works');
   expect(errors).toEqual([]);
 });
+
+test('floating lesson annotations stay inside the viewport after insertion and resize', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1000, height: 700 });
+  await page.setContent(
+    '<iframe sandbox="allow-scripts" style="width:100%;height:500px;border:0"></iframe>',
+  );
+  await page.locator('iframe').evaluate((el, html) => {
+    (el as HTMLIFrameElement).srcdoc = html;
+  }, patchHtmlForIframe("<html><body><p class=\"toast\" id=\"inline\">Normal flow</p><button onclick=\"const el=document.createElement('div');el.className='teacher-annotation';el.style.cssText='position:fixed;left:95%;top:480px;padding:12px';el.textContent='Watch the scope meter: avoid bloated cards and keep the specification focused.';document.body.append(el)\">Annotate</button></body></html>"));
+  const frame = page.frameLocator('iframe');
+  await frame.getByRole('button', { name: 'Annotate' }).click();
+  async function inside() {
+    return frame.locator('.teacher-annotation').evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return (
+        r.left >= 7 &&
+        r.top >= 7 &&
+        r.right <= document.documentElement.clientWidth - 7 &&
+        r.bottom <= document.documentElement.clientHeight - 7 &&
+        el.scrollWidth <= el.clientWidth + 1
+      );
+    });
+  }
+  await expect.poll(inside).toBe(true);
+  await page.setViewportSize({ width: 340, height: 600 });
+  await expect.poll(inside).toBe(true);
+  await expect(frame.locator('#inline')).not.toHaveAttribute('style', /.+/);
+});
