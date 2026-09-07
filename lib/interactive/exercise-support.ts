@@ -110,6 +110,7 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
     var nativeReset = document.querySelector('button#reset-btn') || authoredButtons.find(function(b){return /^reset(?: starter code| to starter)?$/i.test(b.textContent.trim());});
     var anchor = nativeShow || nativeHint || nativeRun;
     var oldToolbar = anchor && anchor.parentElement;
+    var originalParents=[nativeHint,nativeShow,nativeRun,nativeReset].filter(Boolean).map(function(b){return b.parentElement;});
     var topHeader = document.querySelector('body > header, body > .header');
     var topRow = topHeader && (topHeader.querySelector('.header-title-row, .badge-bar') || topHeader);
     var toolbar = topRow && (topRow.querySelector('.header-actions, .controls, .btn-group') || (oldToolbar && topRow.contains(oldToolbar) ? oldToolbar : null));
@@ -118,8 +119,15 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
       if (!topRow) { topRow = document.createElement('header'); document.body.prepend(topRow); }
       topRow.appendChild(toolbar);
     }
+    var actionBar=null;
+    if(toolbar){
+      actionBar=document.createElement('section');actionBar.setAttribute('data-maic-action-bar','');
+      actionBar.style.cssText='display:block;flex:0 0 auto;box-sizing:border-box;width:100%;padding:10px 16px;margin:8px 0;border:1px solid #475569;border-radius:8px;background:#172033';
+      if(topHeader)topHeader.insertAdjacentElement('afterend',actionBar);else document.body.prepend(actionBar);
+      actionBar.appendChild(toolbar);
+    }
     [nativeHint,nativeShow,nativeRun,nativeReset].forEach(function(b){if(b && toolbar)toolbar.appendChild(b);});
-    var rightPanel = document.querySelector('.workspace-pane, .side-section, .panel-right, .inspect-section, .right-panels, .workspace > .panel:last-child');
+    var rightPanel = document.querySelector('.workspace-pane, .side-section, .panel-right, .inspect-section, .right-panels, .right-column, .workspace > .panel:last-child');
     var hintArea = document.createElement('section');
     hintArea.setAttribute('data-maic-hints-area','');
     hintArea.style.cssText='flex:0 1 auto;min-height:0;max-height:min(32vh,320px);overflow:auto;box-sizing:border-box;border:1px solid #475569;border-radius:8px;padding:12px;margin-bottom:12px;background:#172033;color:#e2e8f0';
@@ -326,7 +334,7 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
       var header = topRow;
       hintArea.appendChild(host);
       toolbar.setAttribute('data-maic-exercise-toolbar', '');
-      if (header) header.setAttribute('data-maic-exercise-header', '');
+      // The authored lesson header retains its own layout; actions are a sibling bar.
       var run = nativeRun;
       var ordered = [hint, toggleHints, show, apply, restore, (typeof reset !== 'undefined' ? reset : nativeReset), run, (typeof statusSelect !== 'undefined' ? statusSelect : null)].filter(function (b) { return b && b.parentElement === toolbar; });
       // Move the original nodes, preserving their handlers and hint counters.
@@ -334,7 +342,7 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
       if (run) run.setAttribute('data-maic-run', '');
       hint.setAttribute('data-maic-hint', '');
       var toolbarStyle = document.createElement('style');
-      toolbarStyle.textContent = '\\n[data-maic-exercise-header]{background:#111827!important;padding:12px 20px!important;border-bottom:1px solid #334155!important;display:flex!important;align-items:center!important;justify-content:space-between!important;flex-wrap:wrap!important;gap:12px!important;flex-shrink:0!important}\\n[data-maic-exercise-header]>:not([data-maic-exercise-toolbar]){min-width:0;flex:1 1 280px}\\n[data-maic-exercise-toolbar]{display:flex!important;align-items:center!important;justify-content:flex-end!important;flex-wrap:wrap!important;gap:8px!important;max-width:100%;margin-left:auto}\\n[data-maic-exercise-toolbar]>button{box-sizing:border-box!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;min-height:40px!important;padding:8px 14px!important;border:1px solid transparent!important;border-radius:6px!important;background:#334155!important;color:#e2e8f0!important;font:600 14px/1.4 system-ui,sans-serif!important;white-space:nowrap!important;cursor:pointer}\\n[data-maic-exercise-toolbar]>button[data-maic-hint]{background:#1e293b!important;border-color:#475569!important}\\n[data-maic-exercise-toolbar]>button[data-maic-run]{background:#8b5cf6!important;color:#fff!important}\\n[data-maic-exercise-toolbar]>button:disabled{opacity:.45!important;cursor:default!important}\\n[data-maic-exercise-toolbar]>button:focus-visible{outline:2px solid #67e8f9!important;outline-offset:2px!important}\\n@media(max-width:700px){[data-maic-exercise-toolbar]{justify-content:flex-start!important;margin-left:0;width:100%}[data-maic-exercise-header]{padding:12px!important}}';
+      toolbarStyle.textContent = '\\n[data-maic-exercise-header]{background:#111827!important;padding:12px 20px!important;border-bottom:1px solid #334155!important;display:flex!important;align-items:center!important;justify-content:space-between!important;flex-wrap:wrap!important;gap:12px!important;flex-shrink:0!important}\\n[data-maic-exercise-header]>:not([data-maic-exercise-toolbar]){min-width:0;flex:1 1 280px}\\n[data-maic-exercise-toolbar]{display:flex!important;align-items:center!important;justify-content:flex-end!important;flex-wrap:wrap!important;gap:8px!important;width:100%!important;max-width:100%;margin:0!important;padding:0!important;border:0!important;background:transparent!important}\\n[data-maic-exercise-toolbar]>button{box-sizing:border-box!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;min-height:40px!important;padding:8px 14px!important;border:1px solid transparent!important;border-radius:6px!important;background:#334155!important;color:#e2e8f0!important;font:600 14px/1.4 system-ui,sans-serif!important;white-space:nowrap!important;cursor:pointer}\\n[data-maic-exercise-toolbar]>button[data-maic-hint]{background:#1e293b!important;border-color:#475569!important}\\n[data-maic-exercise-toolbar]>button[data-maic-run]{background:#8b5cf6!important;color:#fff!important}\\n[data-maic-exercise-toolbar]>button:disabled{opacity:.45!important;cursor:default!important}\\n[data-maic-exercise-toolbar]>button:focus-visible{outline:2px solid #67e8f9!important;outline-offset:2px!important}\\n@media(max-width:700px){[data-maic-exercise-toolbar]{justify-content:flex-start!important;margin-left:0;width:100%}[data-maic-exercise-header]{padding:12px!important}}';
       document.head.appendChild(toolbarStyle);
       if (Number.isInteger(labels.sceneNumber) && labels.sceneNumber > 0) {
         var number = document.createElement('span');
@@ -347,8 +355,8 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
     function updateHintsVisibility(){
       var hasRevealed=hintGroups.some(function(node){
         if(getComputedStyle(node).display==='none')return false;
-        var items=node.querySelectorAll('.hint-item');
-        return items.length?Array.from(items).some(function(item){return getComputedStyle(item).display!=='none' && !item.hidden;}):Boolean(node.textContent.trim());
+        var items=node.querySelectorAll('.hint-item, .hint-content');
+        return items.length?Array.from(items).some(function(item){return getComputedStyle(item).display!=='none' && !item.hidden && Boolean(item.textContent.trim());}):(node.id==='hint-box' && Boolean(node.textContent.replace(/^Hint:\\s*/i,'').trim()));
       });
       toggleHints.disabled=!hasRevealed && !hintOutput.childElementCount;
       var solutionVisible=solutionPanel && !solutionPanel.hidden && getComputedStyle(solutionPanel).display!=='none';
@@ -362,6 +370,9 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
     hintObserver.observe(hintOutput,{childList:true,subtree:true});
     hintObserver.observe(code,{attributes:true});
     updateHintsVisibility();
+    originalParents.forEach(function(parent){
+      if(parent && parent!==toolbar && !parent.textContent.trim() && !parent.querySelector('input,textarea,button,select,img'))parent.style.setProperty('display','none','important');
+    });
     window.addEventListener('pagehide',function(){clearTimeout(toastTimer);hintObserver.disconnect();},{once:true});
     if(typeof helper==='string' && /hint|stuck/i.test(helper))hint.title=helper;
     Array.from(document.querySelectorAll('span,p,small,div')).forEach(function(node){

@@ -77,7 +77,7 @@ test('extends the authored toolbar without duplicating hints or reveal controls'
     patchHtmlForIframe(html, en.exerciseSupport),
   );
   const frame = page.frameLocator('iframe');
-  await expect(frame.locator('header').getByRole('button')).toHaveCount(6);
+  await expect(frame.locator('[data-maic-action-bar]').getByRole('button')).toHaveCount(6);
   await expect(frame.locator('#maic-exercise-support')).toBeHidden();
   await frame.getByRole('button', { name: /Need a Hint/ }).click();
   await expect(frame.locator('#hint')).toBeVisible();
