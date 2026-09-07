@@ -72,6 +72,12 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
     var solution = typeof config.solution === 'string' ? config.solution : '';
     var referenceBlock = document.querySelector('#solution pre');
     if (!solution && referenceBlock) solution = referenceBlock.textContent || '';
+    // Keep authored controls and their event handlers; augment their own toolbar.
+    var authoredButtons = Array.from(document.querySelectorAll('button'));
+    var nativeHint = document.querySelector('button#hint-btn') || authoredButtons.find(function (b) { return /^(?:💡\\s*)?(?:need a hint|hint)(?:\\b)/i.test(b.textContent.trim()); });
+    var nativeShow = document.querySelector('button#solution-toggle-btn') || authoredButtons.find(function (b) { return /^(?:reveal|show|hide) solution$/i.test(b.textContent.trim()); });
+    var anchor = nativeShow || nativeHint;
+    var toolbar = anchor && anchor.parentElement;
     var hintIndex = 0;
     var savedAttempt = null;
     var savedAdapter = null;
@@ -101,42 +107,56 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
     root.appendChild(style);
     var section = document.createElement('section');
     var heading = document.createElement('h2'); heading.textContent = labels.title;
-    section.appendChild(heading);
+    if (!toolbar) section.appendChild(heading);
     var controls = document.createElement('div'); controls.className = 'controls'; section.appendChild(controls);
     var status = document.createElement('p'); status.setAttribute('role', 'status');
     var hintOutput = document.createElement('div'); hintOutput.setAttribute('aria-live', 'polite');
     var code = document.createElement('pre'); code.hidden = true; code.textContent = solution; code.id = 'reference-solution';
-    function button(text, handler) { var b = document.createElement('button'); b.type = 'button'; b.textContent = text; b.addEventListener('click', handler); controls.appendChild(b); return b; }
-    var hint = button(labels.hint + ' (0/' + hints.length + ')', function () {
+    function setStatus(text) { status.textContent = text; if (toolbar) host.hidden = !text && code.hidden && !hintOutput.childElementCount; }
+    function button(text, handler) {
+      var b = document.createElement('button'); b.type = 'button'; b.textContent = text;
+      b.addEventListener('click', handler);
+      if (toolbar) { b.className = anchor.className; b.setAttribute('data-maic-exercise-action', ''); toolbar.appendChild(b); }
+      else controls.appendChild(b);
+      return b;
+    }
+    var hint = nativeHint || button(labels.hint + ' (0/' + hints.length + ')', function () {
       if (hintIndex >= hints.length) return;
-      var p = document.createElement('p'); p.textContent = hints[hintIndex++]; hintOutput.appendChild(p);
+      var p = document.createElement('p'); p.textContent = hints[hintIndex++]; hintOutput.appendChild(p); host.hidden = false;
       hint.textContent = labels.hint + ' (' + hintIndex + '/' + hints.length + ')'; hint.disabled = hintIndex >= hints.length;
-    }); hint.disabled = !hints.length;
-    var show = button(labels.show, function () { code.hidden = !code.hidden; show.textContent = code.hidden ? labels.show : labels.hide; show.setAttribute('aria-expanded', String(!code.hidden)); });
-    show.disabled = !solution; show.setAttribute('aria-expanded', 'false'); show.setAttribute('aria-controls', code.id);
+    }); if (!nativeHint) hint.disabled = !hints.length;
+    var show = nativeShow || button(labels.show, function () { code.hidden = !code.hidden; setStatus(status.textContent); show.textContent = code.hidden ? labels.show : labels.hide; show.setAttribute('aria-expanded', String(!code.hidden)); });
+    if (!nativeShow) { show.disabled = !solution; show.setAttribute('aria-expanded', 'false'); show.setAttribute('aria-controls', code.id); }
     var apply = button(labels.apply, function () {
       var adapter = editorAdapter();
-      if (!adapter) { status.textContent = labels.unsupported; return; }
+      if (!adapter) { setStatus(labels.unsupported); return; }
       if (savedAttempt === null) { savedAttempt = adapter.read(); savedAdapter = adapter; }
-      adapter.write(solution); status.textContent = labels.preserved; restore.disabled = false; apply.disabled = true;
+      adapter.write(solution); setStatus(labels.preserved); restore.disabled = false; apply.disabled = true;
     }); apply.disabled = !solution;
     var restore = button(labels.restore, function () {
       if (savedAttempt === null || !savedAdapter) return;
       savedAdapter.write(savedAttempt); savedAttempt = null; savedAdapter = null;
-      restore.disabled = true; apply.disabled = !solution; status.textContent = labels.restored;
+      restore.disabled = true; apply.disabled = !solution; setStatus(labels.restored);
     }); restore.disabled = true;
-    if (!solution) status.textContent = labels.missing;
+    if (!solution) setStatus(labels.missing);
     else if (!editorAdapter()) {
-      apply.disabled = true; status.textContent = labels.unsupported;
+      apply.disabled = true; setStatus(labels.unsupported);
       // Some lessons create their editor only after an asynchronous library load.
       var observer = new MutationObserver(function () {
-        if (editorAdapter()) { apply.disabled = false; status.textContent = ''; observer.disconnect(); }
+        if (editorAdapter()) { apply.disabled = false; setStatus(''); observer.disconnect(); }
       });
       observer.observe(document.body, { childList: true, subtree: true });
       window.addEventListener('pagehide', function () { observer.disconnect(); }, { once: true });
     }
     section.appendChild(status); section.appendChild(hintOutput); section.appendChild(code); root.appendChild(section);
-    document.body.prepend(host);
+    if (toolbar) {
+      // No second help bar: feedback appears only after an action needs it.
+      host.hidden = !status.textContent;
+      style.textContent += ':host([hidden]){display:none}section{padding:8px 12px;border:0;background:transparent}.controls{display:none}';
+      var header = toolbar.closest('header');
+      (header || toolbar).insertAdjacentElement('afterend', host);
+      toolbar.style.flexWrap = 'wrap';
+    } else document.body.prepend(host);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true });
   else install();
