@@ -34,7 +34,7 @@ export function isProWorkbenchEnabled(): boolean {
 }
 
 /**
- * MAIC Editor (Pro mode) gate. Default OFF — gates only the Pro toggle
+ * MAIC Editor (Pro mode) gate. Default ON — gates only the Pro toggle
  * affordance in `Header`. The `StageMode` type union is unaffected so
  * existing code paths typecheck identically with the flag in either
  * state.
@@ -45,7 +45,10 @@ export function isProWorkbenchEnabled(): boolean {
  * editor without the workbench.
  */
 export function isMaicEditorEnabled(): boolean {
-  return isProWorkbenchEnabled() || readBoolean(process.env.NEXT_PUBLIC_MAIC_EDITOR_ENABLED);
+  return (
+    isProWorkbenchEnabled() ||
+    readBoolean(process.env.NEXT_PUBLIC_MAIC_EDITOR_ENABLED ?? 'true')
+  );
 }
 
 /**
