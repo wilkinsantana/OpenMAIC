@@ -109,7 +109,8 @@ export function CanvasArea({
       <div
         className={cn(
           'flex-1 min-h-0 relative overflow-hidden flex items-center justify-center transition-colors duration-500',
-          responsiveExercise ? 'p-0' : 'p-2',
+          'p-2',
+          responsiveExercise && 'border-t border-slate-200 dark:border-slate-700/70',
           currentScene?.type === 'interactive'
             ? 'bg-blue-50/30 dark:bg-blue-900/10'
             : 'bg-gray-50/30 dark:bg-gray-900/30',
@@ -122,7 +123,7 @@ export function CanvasArea({
             'bg-white dark:bg-gray-800 shadow-2xl rounded-lg overflow-hidden relative transition-all duration-700',
             showControls && !isLiveSession && currentScene?.type === 'slide' && 'cursor-pointer',
             currentScene?.type === 'interactive'
-              ? 'shadow-blue-200/50 dark:shadow-blue-900/50 ring-1 ring-blue-900/5 dark:ring-blue-500/10'
+              ? 'shadow-blue-200/50 dark:shadow-blue-900/50 ring-1 ring-slate-300 dark:ring-slate-600/70'
               : 'shadow-gray-200/50 dark:shadow-gray-800/50 ring-1 ring-gray-950/5 dark:ring-white/5',
           )}
           onClick={handleSlideClick}
