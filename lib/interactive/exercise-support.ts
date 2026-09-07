@@ -406,8 +406,18 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
     hintObserver.observe(hintOutput,{childList:true,subtree:true});
     hintObserver.observe(code,{attributes:true});
     updateHintsVisibility();
+    function hasVisibleContent(node){
+      if(node.nodeType===3)return Boolean(node.textContent.trim());
+      if(node.nodeType!==1 || /^(SCRIPT|STYLE|TEMPLATE)$/.test(node.tagName))return false;
+      if(node.hidden || getComputedStyle(node).display==='none')return false;
+      if(node.matches('input,textarea,button,select,img,svg,canvas,video,audio,iframe,[contenteditable]'))return true;
+      return Array.from(node.childNodes).some(hasVisibleContent);
+    }
     originalParents.forEach(function(parent){
-      if(parent && parent!==toolbar && !parent.textContent.trim() && !parent.querySelector('input,textarea,button,select,img'))parent.style.setProperty('display','none','important');
+      while(parent && parent!==document.body && parent!==toolbar && parent!==actionBar && !parent.contains(actionBar) && !hasVisibleContent(parent)){
+        parent.style.setProperty('display','none','important');
+        parent=parent.parentElement;
+      }
     });
     window.addEventListener('pagehide',function(){clearTimeout(toastTimer);hintObserver.disconnect();},{once:true});
     if(typeof helper==='string' && /hint|stuck/i.test(helper))hint.title=helper;

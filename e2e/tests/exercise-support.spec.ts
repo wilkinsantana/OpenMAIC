@@ -364,7 +364,7 @@ test('a runaway pure-code exercise can be stopped without losing the editor', as
 test('original lesson content and subject-specific controls survive action-bar integration', async ({
   page,
 }) => {
-  const original = `<html><head><style>body{max-width:400px;margin:auto}.sample{color:rgb(52,211,153);background:#080f1c}.badge{border-radius:8px;background:#164e63}</style></head><body><header><h1>Growing herbs</h1></header><main><p>Check the soil before watering.</p><pre class="sample"><code>&lt;div id="plant"&gt;Basil&lt;/div&gt;</code></pre><button class="badge" id="water" onclick="this.textContent='Watered'">Water plant</button><textarea id="code-input">return false</textarea><div data-maic-actions><button id="run-btn" onclick="document.querySelector('.test-card').textContent='Test 1 PASSED'">Run tests</button></div><div class="test-card">Test 1 IDLE</div></main><script id="widget-config" type="application/json">{"type":"code","hints":["Look at the soil"],"solution":"return true"}</script></body></html>`;
+  const original = `<html><head><style>body{max-width:400px;margin:auto}.sample{color:rgb(52,211,153);background:#080f1c}.badge{border-radius:8px;background:#164e63}</style></head><body><header><h1>Growing herbs</h1></header><main><p>Check the soil before watering.</p><pre class="sample"><code>&lt;div id="plant"&gt;Basil&lt;/div&gt;</code></pre><button class="badge" id="water" onclick="this.textContent='Watered'">Water plant</button><textarea id="code-input">return false</textarea><section id="old-action-card"><div data-maic-actions><button id="run-btn" onclick="document.querySelector('.test-card').textContent='Test 1 PASSED'">Run tests</button></div></section><div class="test-card">Test 1 IDLE</div></main><script id="widget-config" type="application/json">{"type":"code","hints":["Look at the soil"],"solution":"return true"}</script></body></html>`;
   await page.goto('/');
   await page.setContent(
     '<iframe sandbox="allow-scripts" style="width:100%;height:850px;border:0"></iframe>',
@@ -381,6 +381,7 @@ test('original lesson content and subject-specific controls survive action-bar i
   await frame.getByRole('button', { name: 'Water plant', exact: true }).click();
   await expect(frame.locator('#water')).toHaveText('Watered');
   await expect(frame.locator('[data-maic-action-bar] #run-btn')).toHaveCount(1);
+  await expect(frame.locator('#old-action-card')).toBeHidden();
   await frame.locator('#run-btn').click();
   await expect(frame.locator('.test-card')).toHaveText('Test 1 PASSED');
   await expect(frame.locator('#legacy-frame, #lesson-context')).toHaveCount(0);
