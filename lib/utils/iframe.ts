@@ -28,6 +28,22 @@ window.addEventListener('keydown', function(event) {
 });
 </script>`;
 
+/** Generated pages sometimes shadow window callbacks with an uninitialized global let.
+ * Only simple zero-argument inline calls get a fallback; working lexical callbacks
+ * and compound handlers retain their original behavior. No course data is rewritten.
+ */
+const INLINE_CALLBACK_SHIM = `<script data-maic-inline-callbacks>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('[onclick]').forEach(function (element) {
+    var source = element.getAttribute('onclick') || '';
+    var match = /^\\s*([A-Za-z_$][\\w$]*)\\(\\s*\\)\\s*;?\\s*$/.exec(source);
+    if (!match) return;
+    var name = match[1];
+    element.setAttribute('onclick', "if(typeof " + name + " === 'undefined' && typeof window." + name + " === 'function'){window." + name + "()}else{" + source + "}");
+  });
+});
+</script>`;
+
 const STORAGE_SHIM = `<script data-iframe-storage-shim>
 (function () {
   function makeStore() {
@@ -322,6 +338,9 @@ export function patchHtmlForIframe(html: string, exerciseLabels?: ExerciseSuppor
 
   return injectIntoDocumentHead(
     html,
-    injection + PAGE_ARROW_SHIM + (exerciseLabels ? exerciseSupportScript(exerciseLabels) : ''),
+    injection +
+      INLINE_CALLBACK_SHIM +
+      PAGE_ARROW_SHIM +
+      (exerciseLabels ? exerciseSupportScript(exerciseLabels) : ''),
   );
 }

@@ -446,3 +446,21 @@ test('authored hints and solution keep their original containers and usable heig
   await expect(frame.locator('[data-maic-hints-area]')).toBeHidden();
   await expect(frame.getByRole('button', { name: 'Apply solution', exact: true })).toBeVisible();
 });
+
+test('a generated start button falls back to its window callback when a global let shadows it', async ({
+  page,
+}) => {
+  const source = `<html><body><div id="start-screen"><button onclick="startGame()">Start Prototyping</button></div><button id="lexical" onclick="working()">Working</button><script>let startGame; let working=()=>{document.querySelector('#lexical').textContent='Lexical works'};window.working=()=>{throw Error('Wrong callback')};document.addEventListener('DOMContentLoaded',()=>{window.startGame=()=>{document.querySelector('#start-screen').hidden=true}});</script></body></html>`;
+  await page.setContent('<iframe sandbox="allow-scripts"></iframe>');
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.locator('iframe').evaluate((el, html) => {
+    (el as HTMLIFrameElement).srcdoc = html;
+  }, patchHtmlForIframe(source));
+  const frame = page.frameLocator('iframe');
+  await frame.getByRole('button', { name: 'Start Prototyping' }).click();
+  await expect(frame.locator('#start-screen')).toBeHidden();
+  await frame.locator('#lexical').click();
+  await expect(frame.locator('#lexical')).toHaveText('Lexical works');
+  expect(errors).toEqual([]);
+});
