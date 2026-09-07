@@ -205,3 +205,27 @@ test('output shares spare height with tests without resizing their enclosing pan
   expect(await output.evaluate((el) => el.clientHeight)).toBe(360);
   expect(await output.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
 });
+
+test('legacy JavaScript-config exercises use the same toolbar and hints area', async ({ page }) => {
+  await page.setContent(
+    '<iframe sandbox="allow-scripts" style="width:1000px;height:800px"></iframe>',
+  );
+  await page.locator('iframe').evaluate(
+    (frame, src) => {
+      (frame as HTMLIFrameElement).srcdoc = src;
+    },
+    patchHtmlForIframe(
+      `<html><body><header><h1>Legacy lesson</h1><div><button id="hint-btn" onclick="document.getElementById('hints-panel').style.display='block';document.getElementById('hints-container').innerHTML='<div class=hint-card>A useful hint</div>'">Hint</button><button id="solution-toggle-btn" onclick="document.getElementById('solution').style.display='block'">View Solution</button><button id="run-btn">Run Tests</button></div></header><div class="workspace"><div class="pane"><textarea id="code-input">starter</textarea></div><div class="pane"><div id="hints-panel" style="display:none"><div id="hints-container"></div></div><div id="solution" style="display:none"><pre>reference</pre></div></div></div><script>const WIDGET_CONFIG={hints:['A useful hint']};</script></body></html>`,
+      en.exerciseSupport,
+    ),
+  );
+  const frame = page.frameLocator('iframe');
+  await expect(frame.locator('[data-maic-action-bar]')).toBeVisible();
+  await expect(frame.locator('[data-maic-exercise-header]')).toBeVisible();
+  await frame.getByRole('button', { name: 'Hint', exact: true }).click();
+  await expect(frame.locator('[data-maic-hints-area]')).toContainText('A useful hint');
+  await frame.getByRole('button', { name: 'Hide hints', exact: true }).click();
+  await expect(frame.locator('[data-maic-hints-area]')).toBeHidden();
+  await frame.getByRole('button', { name: 'View Solution', exact: true }).click();
+  await expect(frame.locator('[data-maic-hints-area]')).toContainText('reference');
+});

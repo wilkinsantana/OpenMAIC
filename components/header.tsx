@@ -1,5 +1,7 @@
 'use client';
 
+import { useStageStore } from '@/lib/store';
+import { isCodeExercise } from '@/lib/interactive/exercise-support';
 import type { ReactNode } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useI18n } from '@/lib/hooks/use-i18n';
@@ -45,13 +47,19 @@ export function Header({
   hideCourseActions,
 }: HeaderProps) {
   const { t } = useI18n();
+  const sceneIndex = useStageStore((s) =>
+    s.scenes.findIndex((scene) => scene.id === s.currentSceneId),
+  );
+  const scene = useStageStore((s) => s.scenes.find((scene) => scene.id === s.currentSceneId));
+  const hasExerciseNumber =
+    scene?.content.type === 'interactive' && isCodeExercise(scene.content.html ?? '');
   const router = useRouter();
   const searchParams = useSearchParams();
   const exitLabel = t(classroomExitLabelKey(searchParams));
 
   return (
     <>
-      <header className="h-20 px-8 flex items-center justify-between z-10 bg-transparent gap-4">
+      <header className="min-h-20 shrink-0 px-4 sm:px-8 py-3 flex flex-wrap items-center justify-between z-10 bg-white dark:bg-gray-900 border-b border-slate-200 dark:border-slate-700/70 gap-4">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           {hideBackControl
             ? null
@@ -78,6 +86,11 @@ export function Header({
             <div className="flex flex-col min-w-0">
               <span className="text-[10px] uppercase tracking-widest font-bold text-gray-400 dark:text-gray-500 mb-0.5">
                 {t('stage.currentScene')}
+                {!hasExerciseNumber && sceneIndex >= 0 && (
+                  <span data-maic-page-number className="ml-2 tabular-nums">
+                    {String(sceneIndex + 1).padStart(2, '0')}
+                  </span>
+                )}
               </span>
               <h1
                 className="text-xl font-bold text-gray-800 dark:text-gray-200 tracking-tight truncate"

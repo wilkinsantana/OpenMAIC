@@ -51,7 +51,13 @@ export function isCodeExercise(html: string): boolean {
       repaired,
     );
   try {
-    return Boolean(match && JSON.parse(match[1]).type === 'code');
+    if (match) return JSON.parse(match[1]).type === 'code';
+    // Older generated lessons keep WIDGET_CONFIG in executable JavaScript.
+    // Require both a known editor and a run control, not merely code text.
+    return (
+      /<textarea\b[^>]*\bid=["'](?:code-input|editor-textarea)["']/i.test(html) &&
+      /<button\b[^>]*\bid=["']run-btn["']/i.test(html)
+    );
   } catch {
     return false;
   }
@@ -95,9 +101,14 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
   function install() {
     if (document.getElementById('maic-exercise-support')) return;
     var element = document.getElementById('widget-config');
-    if (!element) return;
     var config;
-    try { config = JSON.parse(element.textContent); } catch (_) { return; }
+    try {
+      config = element ? JSON.parse(element.textContent) :
+        (typeof WIDGET_CONFIG !== 'undefined' ? WIDGET_CONFIG : null);
+    } catch (_) { return; }
+    if (!element && document.querySelector('textarea#code-input,textarea#editor-textarea') && document.querySelector('button#run-btn')) {
+      config = Object.assign({}, config || {}, {type:'code'});
+    }
     if (!config || config.type !== 'code') return;
     var hints = Array.isArray(config.hints) ? config.hints.filter(function (h) { return typeof h === 'string'; }) : [];
     var solution = typeof config.solution === 'string' ? config.solution : '';
@@ -106,13 +117,14 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
     // Keep authored controls and their event handlers; augment their own toolbar.
     var authoredButtons = Array.from(document.querySelectorAll('button'));
     var nativeHint = document.querySelector('button#hint-btn, button#hint-toggle-btn') || authoredButtons.find(function (b) { return /(?:need a hint|reveal hint|get hint|^hint)/i.test(b.textContent.trim()); });
-    var nativeShow = document.querySelector('button#solution-toggle-btn, button#solution-btn') || authoredButtons.find(function (b) { return /^(?:reveal|show|hide) solution$/i.test(b.textContent.trim()); });
+    var nativeShow = document.querySelector('button#solution-toggle-btn, button#solution-btn') || authoredButtons.find(function (b) { return /^(?:reveal|show|hide|view) solution$/i.test(b.textContent.trim()); });
     var nativeRun = document.querySelector('button#run-btn');
     var nativeReset = document.querySelector('button#reset-btn') || authoredButtons.find(function(b){return /^reset(?: starter code| to starter)?$/i.test(b.textContent.trim());});
     var anchor = nativeShow || nativeHint || nativeRun;
     var oldToolbar = anchor && anchor.parentElement;
     var originalParents=[nativeHint,nativeShow,nativeRun,nativeReset].filter(Boolean).map(function(b){return b.parentElement;});
     var topHeader = document.querySelector('body > header, body > .header');
+    if(topHeader)topHeader.setAttribute('data-maic-exercise-header','');
     var topRow = topHeader && (topHeader.querySelector('.header-title-row, .badge-bar') || topHeader);
     var toolbar = topRow && (topRow.querySelector('.header-actions, .controls, .btn-group') || (oldToolbar && topRow.contains(oldToolbar) ? oldToolbar : null));
     if (anchor && !toolbar) {
@@ -128,12 +140,12 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
       actionBar.appendChild(toolbar);
     }
     [nativeHint,nativeShow,nativeRun,nativeReset].forEach(function(b){if(b && toolbar)toolbar.appendChild(b);});
-    var rightPanel = document.querySelector('.workspace-pane, .side-section, .panel-right, .inspect-section, .right-panels, .right-column, .workspace > .panel:last-child');
+    var rightPanel = document.querySelector('.workspace-pane, .side-section, .panel-right, .inspect-section, .right-panels, .right-column, .workspace > .panel:last-child, .workspace > .pane:last-child');
     var hintArea = document.createElement('section');
     hintArea.setAttribute('data-maic-hints-area','');
     hintArea.style.cssText='flex:0 1 auto;min-height:0;max-height:min(32vh,320px);overflow:auto;box-sizing:border-box;border:1px solid #475569;border-radius:8px;padding:12px;margin-bottom:12px;background:#172033;color:#e2e8f0';
     var hintHeading=document.createElement('h2');hintHeading.textContent=labels.hintsTitle || labels.hint;hintHeading.style.cssText='font:600 14px system-ui;margin:0 0 8px';hintArea.appendChild(hintHeading);
-    var hintGroups=Array.from(document.querySelectorAll('#hints-container, .hints-panel, .hints-list, .hints-card, #hint-box, #hints-wrapper'));
+    var hintGroups=Array.from(document.querySelectorAll('#hints-panel, #hints-container, .hints-panel, .hints-list, .hints-card, #hint-box, #hints-wrapper'));
     hintGroups=hintGroups.filter(function(node){return !hintGroups.some(function(other){return other!==node && other.contains(node);});});
     var solutionPanel=document.getElementById('solution');
     var hintContents=document.createElement('div');hintArea.appendChild(hintContents);
@@ -368,7 +380,7 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
     function updateHintsVisibility(){
       var hasRevealed=hintGroups.some(function(node){
         if(getComputedStyle(node).display==='none')return false;
-        var items=node.querySelectorAll('.hint-item, .hint-content');
+        var items=node.querySelectorAll('.hint-item, .hint-content, .hint-card');
         return items.length?Array.from(items).some(function(item){return getComputedStyle(item).display!=='none' && !item.hidden && Boolean(item.textContent.trim());}):(node.id==='hint-box' && Boolean(node.textContent.replace(/^Hint:\\s*/i,'').trim()));
       });
       toggleHints.disabled=!hasRevealed && !hintOutput.childElementCount;
