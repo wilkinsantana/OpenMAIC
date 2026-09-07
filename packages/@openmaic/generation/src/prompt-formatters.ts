@@ -21,7 +21,7 @@ export function buildCourseContext(ctx?: SceneGenerationContext): string {
   // Position information
   lines.push('');
   lines.push(
-    'IMPORTANT: All pages belong to the SAME class session. Do NOT greet again after the first page. When referencing content from earlier pages, say "we just covered" or "as mentioned on page N" — NEVER say "last class" or "previous session" because there is no previous session.',
+    'IMPORTANT: All pages belong to the SAME class session. Do NOT greet again after the first page. Refer back only when it helps explain a specific connection. NEVER say "last class" or "previous session" because there is no previous session.',
   );
   lines.push('');
   if (ctx.pageIndex === 1) {
@@ -29,19 +29,28 @@ export function buildCourseContext(ctx?: SceneGenerationContext): string {
   } else if (ctx.pageIndex === ctx.totalPages) {
     lines.push('Position: This is the LAST page. Conclude the course with a summary and closing.');
     lines.push(
-      'Transition: Continue naturally from the previous page. Do NOT greet or re-introduce.',
+      'Continuity: Keep the lesson coherent, but do not open with a recap or a transition formula. Do NOT greet or re-introduce.',
     );
   } else {
     lines.push(`Position: Page ${ctx.pageIndex} of ${ctx.totalPages} (middle of the course).`);
     lines.push(
-      'Transition: Continue naturally from the previous page. Do NOT greet or re-introduce.',
+      'Continuity: Keep the lesson coherent, but do not open with a recap or a transition formula. Do NOT greet or re-introduce.',
     );
   }
 
-  // Previous page speech for transition reference
+  lines.push('');
+  lines.push(
+    'Natural spoken delivery: Start with the current idea, a concrete observation, a relevant question, an example, or a short task. Choose what fits the content; do not rotate through a fixed template. Avoid stock openings such as "Now that we...", "Now that you...", "Having covered...", or "Building on what we...". Do not repeat the preceding page\'s opening wording or sentence pattern. A backward reference is optional and belongs only where the explanation needs it. Vary sentence length and rhythm while keeping the teacher\'s personality and the requested language. Do not imply the learner has mastered or completed an exercise merely because the page changed.',
+  );
+
+  // Show both ends: continuity without copying the previous opening.
   if (ctx.previousSpeeches.length > 0) {
     lines.push('');
-    lines.push('Previous page speech (for transition reference):');
+    lines.push(
+      'Previous page opening (context only; do not imitate its wording or sentence pattern):',
+    );
+    lines.push(`  ${JSON.stringify(ctx.previousSpeeches[0].slice(0, 250))}`);
+    lines.push('Previous page ending (context only; no recap required):');
     const lastSpeech = ctx.previousSpeeches[ctx.previousSpeeches.length - 1];
     lines.push(`  "...${lastSpeech.slice(-150)}"`);
   }
