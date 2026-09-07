@@ -51,7 +51,9 @@ test('an exercise without a reference solution offers hints without a fake solut
     ),
   );
   const help = page.frameLocator('iframe').locator('#maic-exercise-support');
-  await expect(help.getByRole('status')).toHaveText(en.exerciseSupport.missing);
+  await expect(page.frameLocator('iframe').getByRole('status')).toHaveText(
+    en.exerciseSupport.missing,
+  );
   await expect(help.getByRole('button', { name: 'Apply solution', exact: true })).toBeDisabled();
   await help.getByRole('button', { name: 'Hint (0/1)' }).click();
   await expect(help.getByText('Try again', { exact: true })).toBeVisible();
@@ -75,7 +77,7 @@ test('extends the authored toolbar without duplicating hints or reveal controls'
     patchHtmlForIframe(html, en.exerciseSupport),
   );
   const frame = page.frameLocator('iframe');
-  await expect(frame.getByRole('button')).toHaveCount(5);
+  await expect(frame.locator('header').getByRole('button')).toHaveCount(6);
   await expect(frame.locator('#maic-exercise-support')).toBeHidden();
   await frame.getByRole('button', { name: /Need a Hint/ }).click();
   await expect(frame.locator('#hint')).toBeVisible();
@@ -87,6 +89,7 @@ test('extends the authored toolbar without duplicating hints or reveal controls'
   await expect(apply).toHaveClass('secondary');
   await expect(frame.locator('.actions > button')).toHaveText([
     'Need a Hint? (0/1)',
+    'Hide hints',
     'Reveal Solution',
     'Run & Verify',
     'Apply solution',
@@ -129,4 +132,48 @@ test('console card fills spare column height while long output scrolls', async (
     el.style.display = 'block';
   });
   expect(await output.evaluate((el) => el.getBoundingClientRect().height)).toBeLessThan(before);
+});
+
+test('bottom actions move to the top, hints toggle on the right, and notices dismiss', async ({
+  page,
+}) => {
+  await page.clock.install();
+  const html = `<html><body><div class="header"><h1>Exercise</h1><div class="controls"><button id="run-btn">Run</button></div></div>
+  <div class="workspace"><div class="panel"><textarea id="editor-textarea">attempt</textarea></div><div class="panel">Tests</div></div>
+  <div class="drawer-section"><div class="drawer-header"><div><button id="hint-toggle-btn" onclick="document.getElementById('hint-0').style.display='block'">Reveal Hint (0/1)</button><button onclick="document.getElementById('solution').style.display='block'">Reveal Solution</button></div><span>Use hints if you're stuck!</span></div>
+  <div class="hints-list"><div class="hint-item" id="hint-0" style="display:none">Inspect the handler</div></div><pre id="solution" style="display:none">answer</pre></div>
+  <script id="widget-config" type="application/json">{"type":"code","hints":["Inspect the handler"]}</script></body></html>`;
+  await page.setContent(
+    '<iframe sandbox="allow-scripts" style="width:1200px;height:800px"></iframe>',
+  );
+  await page.locator('iframe').evaluate(
+    (frame, src) => {
+      (frame as HTMLIFrameElement).srcdoc = src;
+    },
+    patchHtmlForIframe(html, en.exerciseSupport),
+  );
+  const frame = page.frameLocator('iframe');
+  const top = frame.locator('[data-maic-exercise-toolbar]');
+  await expect(top.getByRole('button', { name: /Reveal Hint/ })).toHaveCount(1);
+  await expect(frame.locator('.drawer-section')).toBeHidden();
+  await expect(top.getByRole('button', { name: /Reveal Hint/ })).toHaveAttribute(
+    'title',
+    "Use hints if you're stuck!",
+  );
+  await top.getByRole('button', { name: /Reveal Hint/ }).click();
+  await expect(frame.locator('.workspace > .panel:last-child #hint-0')).toBeVisible();
+  await top.getByRole('button', { name: 'Hide hints', exact: true }).click();
+  await expect(frame.locator('#hint-0')).toBeHidden();
+  await top.getByRole('button', { name: 'Show hints', exact: true }).click();
+  await expect(frame.locator('#hint-0')).toBeVisible();
+  await top.getByRole('button', { name: 'Reveal Solution', exact: true }).click();
+  await expect(frame.locator('.workspace > .panel:last-child #solution')).toBeVisible();
+  await top.getByRole('button', { name: 'Apply solution', exact: true }).click();
+  await expect(frame.locator('#editor-textarea')).toHaveValue('answer');
+  await frame.getByRole('button', { name: 'Dismiss notification', exact: true }).click();
+  await expect(frame.getByRole('status')).toBeHidden();
+  await top.getByRole('button', { name: 'Restore my attempt', exact: true }).click();
+  await expect(frame.getByRole('status')).toBeVisible();
+  await page.clock.fastForward(5100);
+  await expect(frame.getByRole('status')).toBeHidden();
 });

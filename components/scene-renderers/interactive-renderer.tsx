@@ -40,6 +40,10 @@ export function InteractiveRenderer({ content, sceneId }: InteractiveRendererPro
       content.html
         ? patchHtmlForIframe(content.html, {
             sceneNumber,
+            dismiss: t('exerciseSupport.dismiss'),
+            hintsTitle: t('exerciseSupport.hintsTitle'),
+            hideHints: t('exerciseSupport.hideHints'),
+            showHints: t('exerciseSupport.showHints'),
             progress: {
               saved: t('learningProgress.saved'),
               saving: t('learningProgress.saving'),

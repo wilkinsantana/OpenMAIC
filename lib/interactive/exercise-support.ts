@@ -59,6 +59,10 @@ export function isCodeExercise(html: string): boolean {
 
 export interface ExerciseSupportLabels {
   sceneNumber?: number;
+  dismiss?: string;
+  hintsTitle?: string;
+  hideHints?: string;
+  showHints?: string;
   progress?: {
     saved: string;
     saving: string;
@@ -96,14 +100,53 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
     if (!config || config.type !== 'code') return;
     var hints = Array.isArray(config.hints) ? config.hints.filter(function (h) { return typeof h === 'string'; }) : [];
     var solution = typeof config.solution === 'string' ? config.solution : '';
-    var referenceBlock = document.querySelector('#solution pre');
+    var referenceBlock = document.querySelector('#solution pre, pre#solution');
     if (!solution && referenceBlock) solution = referenceBlock.textContent || '';
     // Keep authored controls and their event handlers; augment their own toolbar.
     var authoredButtons = Array.from(document.querySelectorAll('button'));
-    var nativeHint = document.querySelector('button#hint-btn') || authoredButtons.find(function (b) { return /^(?:💡\\s*)?(?:need a hint|hint)(?:\\b)/i.test(b.textContent.trim()); });
-    var nativeShow = document.querySelector('button#solution-toggle-btn') || authoredButtons.find(function (b) { return /^(?:reveal|show|hide) solution$/i.test(b.textContent.trim()); });
-    var anchor = nativeShow || nativeHint;
-    var toolbar = anchor && anchor.parentElement;
+    var nativeHint = document.querySelector('button#hint-btn, button#hint-toggle-btn') || authoredButtons.find(function (b) { return /(?:need a hint|reveal hint|get hint|^hint)/i.test(b.textContent.trim()); });
+    var nativeShow = document.querySelector('button#solution-toggle-btn, button#solution-btn') || authoredButtons.find(function (b) { return /^(?:reveal|show|hide) solution$/i.test(b.textContent.trim()); });
+    var nativeRun = document.querySelector('button#run-btn');
+    var nativeReset = document.querySelector('button#reset-btn') || authoredButtons.find(function(b){return /^reset(?: starter code| to starter)?$/i.test(b.textContent.trim());});
+    var anchor = nativeShow || nativeHint || nativeRun;
+    var oldToolbar = anchor && anchor.parentElement;
+    var topHeader = document.querySelector('body > header, body > .header');
+    var topRow = topHeader && (topHeader.querySelector('.header-title-row, .badge-bar') || topHeader);
+    var toolbar = topRow && (topRow.querySelector('.header-actions, .controls, .btn-group') || (oldToolbar && topRow.contains(oldToolbar) ? oldToolbar : null));
+    if (anchor && !toolbar) {
+      toolbar = document.createElement('div');
+      if (!topRow) { topRow = document.createElement('header'); document.body.prepend(topRow); }
+      topRow.appendChild(toolbar);
+    }
+    [nativeHint,nativeShow,nativeRun,nativeReset].forEach(function(b){if(b && toolbar)toolbar.appendChild(b);});
+    var rightPanel = document.querySelector('.workspace-pane, .side-section, .panel-right, .inspect-section, .right-panels, .workspace > .panel:last-child');
+    var hintArea = document.createElement('section');
+    hintArea.setAttribute('data-maic-hints-area','');
+    hintArea.style.cssText='flex:0 1 auto;min-height:0;max-height:min(32vh,320px);overflow:auto;box-sizing:border-box;border:1px solid #475569;border-radius:8px;padding:12px;margin-bottom:12px;background:#172033;color:#e2e8f0';
+    var hintHeading=document.createElement('h2');hintHeading.textContent=labels.hintsTitle || labels.hint;hintHeading.style.cssText='font:600 14px system-ui;margin:0 0 8px';hintArea.appendChild(hintHeading);
+    var hintGroups=Array.from(document.querySelectorAll('#hints-container, .hints-panel, .hints-list, .hints-card, #hint-box, #hints-wrapper'));
+    hintGroups=hintGroups.filter(function(node){return !hintGroups.some(function(other){return other!==node && other.contains(node);});});
+    var solutionPanel=document.getElementById('solution');
+    var hintContents=document.createElement('div');hintArea.appendChild(hintContents);
+    hintGroups.forEach(function(node){hintContents.appendChild(node);});
+    if(solutionPanel)hintArea.appendChild(solutionPanel);
+    var hintsHidden=false;
+    var oldDrawer=document.querySelector('.drawer-section');
+    if(oldDrawer && !oldDrawer.querySelector('button,textarea,pre,.hint-item')){oldDrawer.hidden=true;oldDrawer.style.setProperty('display','none','important');}
+    // A single hints destination on every page. Without a right column use a
+    // predictable section immediately below the top action row.
+    if(rightPanel){
+      rightPanel.prepend(hintArea);
+      rightPanel.style.overflowY='auto';
+      var results=rightPanel.querySelector('.output-container, #test-results, #test-list, #test-cases-container');
+      if(results)results.style.minHeight='180px';
+    }
+    else if(topRow)topRow.insertAdjacentElement('afterend',hintArea);
+    else document.body.prepend(hintArea);
+    if(oldToolbar && oldToolbar!==toolbar && !oldToolbar.querySelector('button')) {
+      var helper=(oldToolbar.closest('.drawer-header') || oldToolbar).textContent.trim();
+      if(helper.length<200){oldToolbar.hidden=true;oldToolbar.style.setProperty('display','none','important');}
+    }
     // Let an authored console card consume unused space in its column.
     // Keep a bounded scrolling log instead of growing with every output line.
     var output = document.querySelector('#output, #console-output, #output-log');
@@ -130,7 +173,7 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
         var cm = mirrors[0].CodeMirror;
         return { read: function () { return cm.getValue(); }, write: function (value) { cm.setValue(value); cm.focus(); } };
       }
-      var textarea = document.getElementById('code-input');
+      var textarea = document.querySelector('textarea#code-input, textarea#editor-textarea');
       if (textarea && textarea.tagName === 'TEXTAREA' && !textarea.disabled && !textarea.readOnly) {
         return { read: function () { return textarea.value; }, write: function (value) {
           textarea.value = value;
@@ -153,9 +196,23 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
     if (!toolbar) section.appendChild(heading);
     var controls = document.createElement('div'); controls.className = 'controls'; section.appendChild(controls);
     var status = document.createElement('p'); status.setAttribute('role', 'status');
+    var notice = document.createElement('div');notice.hidden=true;
+    notice.style.cssText='position:fixed;right:16px;bottom:16px;z-index:2147483647;max-width:min(420px,calc(100vw - 32px));padding:12px;box-sizing:border-box;background:#172033;color:#e2e8f0;border:1px solid #64748b;border-radius:8px;box-shadow:0 4px 20px #0006;display:none;gap:12px;align-items:start;font:13px/1.5 system-ui';
+    var dismiss=document.createElement('button');dismiss.type='button';dismiss.textContent='×';dismiss.setAttribute('aria-label',labels.dismiss || 'Dismiss notification');
+    dismiss.style.cssText='background:transparent;border:0;color:inherit;font:20px system-ui;cursor:pointer';
+    notice.appendChild(status);notice.appendChild(dismiss);
+    var toastTimer;
+    function hideNotice(){notice.hidden=true;notice.style.display='none';}
+    dismiss.addEventListener('click',hideNotice);
+    document.body.appendChild(notice);
     var hintOutput = document.createElement('div'); hintOutput.setAttribute('aria-live', 'polite');
     var code = document.createElement('pre'); code.hidden = true; code.textContent = solution; code.id = 'reference-solution';
-    function setStatus(text) { status.textContent = text; if (toolbar) host.hidden = !text && code.hidden && !hintOutput.childElementCount; }
+    function setStatus(text) {
+      status.textContent=text; clearTimeout(toastTimer);
+      notice.hidden=!text;notice.style.display=text?'flex':'none';
+      if(text)toastTimer=setTimeout(hideNotice,5000);
+      if(toolbar)host.hidden=code.hidden && !hintOutput.childElementCount;
+    }
     function button(text, handler) {
       var b = document.createElement('button'); b.type = 'button'; b.textContent = text;
       b.addEventListener('click', handler);
@@ -168,6 +225,16 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
       var p = document.createElement('p'); p.textContent = hints[hintIndex++]; hintOutput.appendChild(p); host.hidden = false;
       hint.textContent = labels.hint + ' (' + hintIndex + '/' + hints.length + ')'; hint.disabled = hintIndex >= hints.length;
     }); if (!nativeHint) hint.disabled = !hints.length;
+    var toggleHints=button(labels.hideHints || 'Hide hints',function(){
+      hintsHidden=!hintsHidden;hintContents.hidden=hintsHidden;hintOutput.hidden=hintsHidden;
+      toggleHints.textContent=hintsHidden?(labels.showHints || 'Show hints'):(labels.hideHints || 'Hide hints');
+      toggleHints.setAttribute('aria-expanded',String(!hintsHidden));updateHintsVisibility();
+    });toggleHints.disabled=true;toggleHints.setAttribute('aria-expanded','true');
+    hint.addEventListener('click',function(){
+      hintsHidden=false;hintContents.hidden=false;hintOutput.hidden=false;
+      toggleHints.textContent=labels.hideHints || 'Hide hints';toggleHints.setAttribute('aria-expanded','true');
+      requestAnimationFrame(updateHintsVisibility);
+    });
     var show = nativeShow || button(labels.show, function () { code.hidden = !code.hidden; setStatus(status.textContent); show.textContent = code.hidden ? labels.show : labels.hide; show.setAttribute('aria-expanded', String(!code.hidden)); });
     if (!nativeShow) { show.disabled = !solution; show.setAttribute('aria-expanded', 'false'); show.setAttribute('aria-controls', code.id); }
     var apply = button(labels.apply, function () {
@@ -224,7 +291,7 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
       statusSelect.addEventListener('change',function(){progressStatus=statusSelect.value;saveProgress();});
       if (nativeShow) nativeShow.addEventListener('click',function(){assisted=true;saveProgress();});
       else show.addEventListener('click',function(){assisted=true;saveProgress();});
-      var reset = toolbar && toolbar.querySelector('#reset-btn');
+      var reset = nativeReset;
       if (!reset) reset = button(progressLabels.reset,function(){ var a=editorAdapter(); if(a && initialCode !== null){savedAttempt=a.read();savedAdapter=a;a.write(initialCode);restore.disabled=false;progressStatus='in-progress';statusSelect.value=progressStatus;saveProgress();} });
       else reset.addEventListener('click',function(){var a=editorAdapter();if(a){savedAttempt=a.read();savedAdapter=a;restore.disabled=false;}progressStatus='in-progress';statusSelect.value=progressStatus;setTimeout(saveProgress,0);},true);
       window.addEventListener('message',function(event){
@@ -251,17 +318,17 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
       window.addEventListener('pagehide',function(){saveProgress();clearInterval(progressTimer);},{once:true});
       ready();
     }
-    section.appendChild(status); section.appendChild(hintOutput); section.appendChild(code); root.appendChild(section);
+    section.appendChild(hintOutput); section.appendChild(code); root.appendChild(section);
     if (toolbar) {
       // No second help bar: feedback appears only after an action needs it.
-      host.hidden = !status.textContent;
+      host.hidden = code.hidden && !hintOutput.childElementCount;
       style.textContent += ':host([hidden]){display:none}section{padding:8px 12px;border:0;background:transparent}.controls{display:none}';
-      var header = toolbar.closest('header');
-      (header || toolbar).insertAdjacentElement('afterend', host);
+      var header = topRow;
+      hintArea.appendChild(host);
       toolbar.setAttribute('data-maic-exercise-toolbar', '');
       if (header) header.setAttribute('data-maic-exercise-header', '');
-      var run = toolbar.querySelector('#run-btn');
-      var ordered = [hint, show, run, apply, restore].filter(function (b) { return b && b.parentElement === toolbar; });
+      var run = nativeRun;
+      var ordered = [hint, toggleHints, show, run, apply, restore].filter(function (b) { return b && b.parentElement === toolbar; });
       // Move the original nodes, preserving their handlers and hint counters.
       ordered.concat(Array.from(toolbar.children).filter(function (b) { return ordered.indexOf(b) < 0; })).forEach(function (b) { toolbar.appendChild(b); });
       if (run) run.setAttribute('data-maic-run', '');
@@ -277,6 +344,33 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
         toolbar.appendChild(number);
       }
     } else document.body.prepend(host);
+    function updateHintsVisibility(){
+      var hasRevealed=hintGroups.some(function(node){
+        if(getComputedStyle(node).display==='none')return false;
+        var items=node.querySelectorAll('.hint-item');
+        return items.length?Array.from(items).some(function(item){return getComputedStyle(item).display!=='none' && !item.hidden;}):Boolean(node.textContent.trim());
+      });
+      toggleHints.disabled=!hasRevealed && !hintOutput.childElementCount;
+      var solutionVisible=solutionPanel && !solutionPanel.hidden && getComputedStyle(solutionPanel).display!=='none';
+      hintArea.hidden=!(hasRevealed && !hintsHidden) && !solutionVisible && code.hidden && !(hintOutput.childElementCount && !hintsHidden);
+      hintArea.style.display=hintArea.hidden?'none':'block';
+    }
+    show.addEventListener('click',function(){requestAnimationFrame(updateHintsVisibility);});
+    var hintObserver=new MutationObserver(updateHintsVisibility);
+    hintGroups.forEach(function(node){hintObserver.observe(node,{attributes:true,childList:true,subtree:true,characterData:true});});
+    if(solutionPanel)hintObserver.observe(solutionPanel,{attributes:true,childList:true,subtree:true});
+    hintObserver.observe(hintOutput,{childList:true,subtree:true});
+    hintObserver.observe(code,{attributes:true});
+    updateHintsVisibility();
+    window.addEventListener('pagehide',function(){clearTimeout(toastTimer);hintObserver.disconnect();},{once:true});
+    if(typeof helper==='string' && /hint|stuck/i.test(helper))hint.title=helper;
+    Array.from(document.querySelectorAll('span,p,small,div')).forEach(function(node){
+      if(node.children.length===0 && /^use hints if you['’]re stuck[!.]?$/i.test(node.textContent.trim())){
+        hint.title=node.textContent.trim();node.style.setProperty('display','none','important');
+        var parent=node.parentElement;
+        if(parent && parent!==document.body && !parent.querySelector('button,textarea,pre') && parent.textContent.trim()===node.textContent.trim())parent.style.setProperty('display','none','important');
+      }
+    });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true });
   else install();
