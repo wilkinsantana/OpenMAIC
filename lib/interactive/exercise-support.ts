@@ -117,7 +117,7 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
     // Keep authored controls and their event handlers; augment their own toolbar.
     var authoredButtons = Array.from(document.querySelectorAll('button'));
     var nativeHint = document.querySelector('button#hint-btn, button#hint-toggle-btn') || authoredButtons.find(function (b) { return /(?:need a hint|reveal hint|get hint|^hint)/i.test(b.textContent.trim()); });
-    var nativeShow = document.querySelector('button#solution-toggle-btn, button#solution-btn') || authoredButtons.find(function (b) { return /^(?:reveal|show|hide|view) solution$/i.test(b.textContent.trim()); });
+    var nativeShow = document.querySelector('button#solution-toggle-btn, button#solution-btn') || authoredButtons.find(function (b) { return /(?:reveal|show|hide|view)\\s+(?:the\\s+)?solution\\b/i.test(b.textContent.trim()); });
     var nativeRun = document.querySelector('button#run-btn');
     var nativeReset = document.querySelector('button#reset-btn') || authoredButtons.find(function(b){return /^reset(?: starter code| to starter)?$/i.test(b.textContent.trim());});
     var anchor = nativeShow || nativeHint || nativeRun;
@@ -145,7 +145,7 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
     hintArea.setAttribute('data-maic-hints-area','');
     hintArea.style.cssText='flex:0 1 auto;min-height:0;max-height:min(32vh,320px);overflow:auto;box-sizing:border-box;border:1px solid #475569;border-radius:8px;padding:12px;margin-bottom:12px;background:#172033;color:#e2e8f0';
     var hintHeading=document.createElement('h2');hintHeading.textContent=labels.hintsTitle || labels.hint;hintHeading.style.cssText='font:600 14px system-ui;margin:0 0 8px';hintArea.appendChild(hintHeading);
-    var hintGroups=Array.from(document.querySelectorAll('#hints-panel, #hints-container, .hints-panel, .hints-list, .hints-card, #hint-box, #hints-wrapper'));
+    var hintGroups=Array.from(document.querySelectorAll('#hints-panel, #hints-container, .hints-panel, .hints-list, .hints-card, #hint-box, #hints-wrapper, #hint-container, #hint-panel, .hint-box, .hint-container'));
     hintGroups=hintGroups.filter(function(node){return !hintGroups.some(function(other){return other!==node && other.contains(node);});});
     var solutionPanel=document.getElementById('solution');
     var hintContents=document.createElement('div');hintArea.appendChild(hintContents);
@@ -165,6 +165,7 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
       var results=rightPanel.querySelector('.output-container, #test-results, #test-list, #test-cases-container');
       if(results)results.style.minHeight='180px';
     }
+    else if(actionBar)actionBar.insertAdjacentElement('afterend',hintArea);
     else if(topRow)topRow.insertAdjacentElement('afterend',hintArea);
     else document.body.prepend(hintArea);
     if(oldToolbar && oldToolbar!==toolbar && !oldToolbar.querySelector('button')) {
@@ -378,10 +379,13 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
       }
     } else document.body.prepend(host);
     function updateHintsVisibility(){
+      var hintNowShowsSolution = /(?:reveal|show|hide|view)\\s+(?:the\\s+)?solution\\b/i.test(hint.textContent);
+      if(!nativeShow && hintNowShowsSolution){show.hidden=true;show.style.setProperty('display','none','important');}
+      else if(!nativeShow){show.hidden=false;show.style.removeProperty('display');}
       var hasRevealed=hintGroups.some(function(node){
         if(getComputedStyle(node).display==='none')return false;
-        var items=node.querySelectorAll('.hint-item, .hint-content, .hint-card');
-        return items.length?Array.from(items).some(function(item){return getComputedStyle(item).display!=='none' && !item.hidden && Boolean(item.textContent.trim());}):(node.id==='hint-box' && Boolean(node.textContent.replace(/^Hint:\\s*/i,'').trim()));
+        var items=node.querySelectorAll('.hint-item, .hint-content, .hint-card, .hint');
+        return items.length?Array.from(items).some(function(item){return getComputedStyle(item).display!=='none' && !item.hidden && Boolean(item.textContent.trim());}):Array.from(node.querySelectorAll('p,li,div')).some(function(item){return !item.children.length && getComputedStyle(item).display!=='none' && !item.hidden && Boolean(item.textContent.trim());});
       });
       toggleHints.disabled=!hasRevealed && !hintOutput.childElementCount;
       var solutionVisible=solutionPanel && !solutionPanel.hidden && getComputedStyle(solutionPanel).display!=='none';
@@ -392,6 +396,7 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
     }
     show.addEventListener('click',function(){requestAnimationFrame(updateHintsVisibility);});
     var hintObserver=new MutationObserver(updateHintsVisibility);
+    hintObserver.observe(hint,{childList:true,subtree:true,characterData:true});
     hintGroups.forEach(function(node){hintObserver.observe(node,{attributes:true,childList:true,subtree:true,characterData:true});});
     if(solutionPanel)hintObserver.observe(solutionPanel,{attributes:true,childList:true,subtree:true});
     hintObserver.observe(hintOutput,{childList:true,subtree:true});

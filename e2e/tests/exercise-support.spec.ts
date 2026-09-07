@@ -229,3 +229,33 @@ test('legacy JavaScript-config exercises use the same toolbar and hints area', a
   await frame.getByRole('button', { name: 'View Solution', exact: true }).click();
   await expect(frame.locator('[data-maic-hints-area]')).toContainText('reference');
 });
+
+test('progressive hint control becomes the only solution control and plain hints can hide', async ({
+  page,
+}) => {
+  await page.setContent(
+    '<iframe sandbox="allow-scripts" style="width:1000px;height:800px"></iframe>',
+  );
+  await page.locator('iframe').evaluate(
+    (frame, src) => {
+      (frame as HTMLIFrameElement).srcdoc = src;
+    },
+    patchHtmlForIframe(
+      `<html><body><header><h1>Mission</h1><div><button id="hint-btn" onclick="this.textContent='Show Solution';document.getElementById('hints-container').innerHTML='<div>Hint 1: Inspect the event listener.</div><div>Hint 2: Create the element.</div>'">Hint</button><button id="run-btn">Run</button></div></header><textarea id="code-input"></textarea><div id="hints-container"></div><script id="widget-config" type="application/json">{"type":"code","solution":"reference"}</script></body></html>`,
+      en.exerciseSupport,
+    ),
+  );
+  const frame = page.frameLocator('iframe');
+  await frame.getByRole('button', { name: 'Hint', exact: true }).click();
+  await expect(frame.getByRole('button', { name: /show solution/i })).toHaveCount(1);
+  await expect(frame.getByRole('button', { name: 'Hide hints', exact: true })).toBeEnabled();
+  await frame.getByRole('button', { name: 'Hide hints', exact: true }).click();
+  await expect(frame.locator('[data-maic-hints-area]')).toBeHidden();
+  await frame.getByRole('button', { name: 'Show hints', exact: true }).click();
+  await expect(frame.locator('[data-maic-hints-area]')).toContainText('Inspect the event listener');
+  expect(
+    await frame
+      .locator('[data-maic-action-bar]')
+      .evaluate((el) => Boolean(el.nextElementSibling?.hasAttribute('data-maic-hints-area'))),
+  ).toBe(true);
+});
