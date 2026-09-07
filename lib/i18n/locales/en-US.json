@@ -2081,5 +2081,22 @@
     "unsupported": "You can read and copy the solution below. Applying it automatically is not supported by this editor.",
     "preserved": "Solution applied. Your previous attempt is kept until this exercise reloads. Use Run & Verify to check the result.",
     "restored": "Your previous attempt has been restored."
+  },
+  "learningProgress": {
+    "saved": "Attempt saved in this browser",
+    "saving": "Saving attempt…",
+    "error": "Could not save. Keep this page open and copy your code.",
+    "status": "Exercise progress",
+    "inProgress": "In progress",
+    "completed": "Completed",
+    "review": "Needs review",
+    "assisted": "Solution-assisted",
+    "reset": "Reset to starter",
+    "title": "Exercise progress",
+    "notice": "Completion is marked by you. Attempts stay in this browser; earlier exercise versions are retained.",
+    "all": "Include other courses",
+    "independent": "Independent attempt",
+    "empty": "Start an exercise to save your progress here.",
+    "continue": "Continue learning"
   }
 }

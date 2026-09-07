@@ -59,6 +59,17 @@ export function isCodeExercise(html: string): boolean {
 
 export interface ExerciseSupportLabels {
   sceneNumber?: number;
+  progress?: {
+    saved: string;
+    saving: string;
+    error: string;
+    status: string;
+    inProgress: string;
+    completed: string;
+    review: string;
+    assisted: string;
+    reset: string;
+  };
   title: string;
   hint: string;
   show: string;
@@ -110,6 +121,9 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
     var hintIndex = 0;
     var savedAttempt = null;
     var savedAdapter = null;
+    var assisted = false;
+    var progressStatus = 'in-progress';
+    var saveProgress = function () {};
     function editorAdapter() {
       var mirrors = document.querySelectorAll('.CodeMirror');
       if (mirrors.length === 1 && mirrors[0].CodeMirror) {
@@ -160,7 +174,7 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
       var adapter = editorAdapter();
       if (!adapter) { setStatus(labels.unsupported); return; }
       if (savedAttempt === null) { savedAttempt = adapter.read(); savedAdapter = adapter; }
-      adapter.write(solution); setStatus(labels.preserved); restore.disabled = false; apply.disabled = true;
+      assisted = true; adapter.write(solution); setStatus(labels.preserved); restore.disabled = false; apply.disabled = true; saveProgress();
     }); apply.disabled = !solution;
     var restore = button(labels.restore, function () {
       if (savedAttempt === null || !savedAdapter) return;
@@ -176,6 +190,66 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
       });
       observer.observe(document.body, { childList: true, subtree: true });
       window.addEventListener('pagehide', function () { observer.disconnect(); }, { once: true });
+    }
+    if (labels.progress) {
+      var progressLabels = labels.progress;
+      var hydrated = false;
+      var initialCode = null;
+      var lastSent = '';
+      var requestId = 0;
+      var statusSelect = document.createElement('select');
+      statusSelect.setAttribute('aria-label', progressLabels.status);
+      statusSelect.style.cssText = 'max-width:180px;background:#1e293b;color:#e2e8f0;border:1px solid #475569;border-radius:6px;padding:8px;font:13px system-ui';
+      [['in-progress',progressLabels.inProgress],['completed',progressLabels.completed],['needs-review',progressLabels.review]].forEach(function (pair) {
+        var option = document.createElement('option'); option.value = pair[0]; option.textContent = pair[1]; statusSelect.appendChild(option);
+      });
+      (toolbar || controls).appendChild(statusSelect);
+      function post(payload) { window.parent.postMessage(Object.assign({__maicProgress:true},payload),'*'); }
+      function ready() {
+        var adapter = editorAdapter();
+        if (!adapter) return;
+        if (initialCode === null) initialCode = adapter.read();
+        if (!hydrated) post({kind:'ready'});
+      }
+      saveProgress = function () {
+        var adapter = editorAdapter();
+        if (!adapter || !hydrated) return;
+        var draft = {code:adapter.read(),savedAttempt:savedAttempt,assisted:assisted,status:progressStatus};
+        var encoded = JSON.stringify(draft);
+        if (encoded === lastSent) return;
+        lastSent = encoded;
+        setStatus(progressLabels.saving);
+        post({kind:'save',draft:draft,requestId:++requestId});
+      };
+      statusSelect.addEventListener('change',function(){progressStatus=statusSelect.value;saveProgress();});
+      if (nativeShow) nativeShow.addEventListener('click',function(){assisted=true;saveProgress();});
+      else show.addEventListener('click',function(){assisted=true;saveProgress();});
+      var reset = toolbar && toolbar.querySelector('#reset-btn');
+      if (!reset) reset = button(progressLabels.reset,function(){ var a=editorAdapter(); if(a && initialCode !== null){savedAttempt=a.read();savedAdapter=a;a.write(initialCode);restore.disabled=false;progressStatus='in-progress';statusSelect.value=progressStatus;saveProgress();} });
+      else reset.addEventListener('click',function(){progressStatus='in-progress';statusSelect.value=progressStatus;setTimeout(saveProgress,0);});
+      window.addEventListener('message',function(event){
+        if(event.source !== window.parent || !event.data || event.data.__maicProgress !== true) return;
+        var message=event.data;
+        if(message.kind==='request-ready') ready();
+        if(message.kind==='restore' && !hydrated){
+          var a=editorAdapter(); if(!a)return;
+          hydrated=true;
+          var d=message.draft;
+          // Do not replace typing that happened while storage was loading.
+          if(d && typeof d.code==='string' && a.read()===initialCode){
+            a.write(d.code);savedAttempt=d.savedAttempt;savedAdapter=a;assisted=Boolean(d.assisted);
+            progressStatus=d.status;statusSelect.value=progressStatus;restore.disabled=savedAttempt===null;
+          }
+          saveProgress();
+        }
+        if(message.kind==='saved' && message.requestId===requestId) setStatus(progressLabels.saved + (assisted ? ' · '+progressLabels.assisted : ''));
+        if(message.kind==='error'){lastSent='';setStatus(progressLabels.error);}
+      });
+      var progressTimer=setInterval(function(){if(!hydrated)ready();else saveProgress();},500);
+      document.addEventListener('input',saveProgress);
+      document.addEventListener('change',saveProgress);
+      window.addEventListener('pagehide',function(){saveProgress();clearInterval(progressTimer);},{once:true});
+      ready();
     }
     section.appendChild(status); section.appendChild(hintOutput); section.appendChild(code); root.appendChild(section);
     if (toolbar) {

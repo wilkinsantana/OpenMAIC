@@ -83,7 +83,9 @@ test('personal notes autosave, filter, navigate and export separately from the c
     'true',
   );
   await panel.getByRole('button', { name: 'Bookmarks', exact: true }).click();
-  await expect(panel.getByRole('list').getByRole('button')).toHaveCount(1);
+  await expect(
+    panel.locator('section[aria-label]').last().getByRole('list').getByRole('button'),
+  ).toHaveCount(1);
   await panel.getByRole('button', { name: 'Go to slide', exact: true }).click();
   await expect(panel).not.toBeVisible();
   await page.getByRole('button', { name: 'Notebook', exact: true }).click();
@@ -114,7 +116,9 @@ test('personal notes autosave, filter, navigate and export separately from the c
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(imported)),
   });
-  await expect(panel.getByRole('list').getByRole('button')).toHaveCount(2);
+  await expect(
+    panel.locator('section[aria-label]').last().getByRole('list').getByRole('button'),
+  ).toHaveCount(2);
   await expect(editor).toHaveValue('Remember **request cancellation** and inspect the logs.');
   await panel
     .getByRole('list')
@@ -194,5 +198,17 @@ test('code exercise fills the classroom slot and places its number in the toolba
       .poll(async () => iframe.evaluate((el) => el.getBoundingClientRect().height))
       .toBeGreaterThan(size.height * 0.6);
   }
+  await frame.locator('#code-input').fill('My persistent solution');
+  await expect(frame.getByRole('status')).toContainText('Attempt saved');
+  await page.reload();
+  await expect(frame.locator('#code-input')).toHaveValue('My persistent solution');
+  await frame.getByRole('button', { name: 'Apply solution', exact: true }).click();
+  await expect(frame.getByRole('status')).toContainText('Solution-assisted');
+  await page.reload();
+  await expect(frame.locator('#code-input')).toHaveValue('Answer');
+  await frame.getByRole('button', { name: 'Restore my attempt', exact: true }).click();
+  await expect(frame.locator('#code-input')).toHaveValue('My persistent solution');
+  await frame.getByLabel('Exercise progress').selectOption('completed');
+  await expect(frame.getByRole('status')).toContainText('Attempt saved');
   await page.screenshot({ path: '/tmp/openmaic-responsive-classroom.png', fullPage: true });
 });

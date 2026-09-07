@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
+import { progressDatabase, exerciseSourceHash, validExerciseDraft } from '@/lib/learning/progress';
+import { useStageStore } from '@/lib/store/stage';
 import { isCodeExercise } from '@/lib/interactive/exercise-support';
 import { useWidgetIframeStore } from '@/lib/store/widget-iframe';
 import {
@@ -169,6 +171,73 @@ function PooledIframe({ sceneId, entry, visible }: PooledIframeProps) {
       ),
     [refs, sceneId],
   );
+
+  useEffect(() => {
+    const stage = useStageStore.getState().stage;
+    const scene = useStageStore.getState().scenes.find((s) => s.id === sceneId);
+    if (
+      !stage ||
+      scene?.content.type !== 'interactive' ||
+      !isCodeExercise(scene.content.html ?? '')
+    )
+      return;
+    let disposed = false;
+    let queue = Promise.resolve();
+    let revision: number | undefined;
+    const hash = exerciseSourceHash(scene.content.html ?? '');
+    const send = (payload: Record<string, unknown>) => {
+      if (!disposed)
+        iframeRef.current?.contentWindow?.postMessage({ __maicProgress: true, ...payload }, '*');
+    };
+    const listener = (event: MessageEvent) => {
+      if (event.source !== iframeRef.current?.contentWindow || event.data?.__maicProgress !== true)
+        return;
+      const data = event.data;
+      if (data.kind === 'ready') {
+        void hash
+          .then(async (sourceHash) => {
+            const saved = await progressDatabase().attempts.get([stage.id, sceneId, sourceHash]);
+            revision ??= saved?.updatedAt ?? 0;
+            send({ kind: 'restore', draft: saved ?? null });
+          })
+          .catch(() => send({ kind: 'error' }));
+      } else if (data.kind === 'save' && validExerciseDraft(data.draft)) {
+        const draft = { ...data.draft };
+        queue = queue
+          .then(async () => {
+            const sourceHash = await hash;
+            const db = progressDatabase();
+            await db.transaction('rw', db.attempts, async () => {
+              const current = await db.attempts.get([stage.id, sceneId, sourceHash]);
+              if (revision === undefined || (current?.updatedAt ?? 0) !== revision)
+                throw new Error('Attempt changed in another tab');
+              const nextRevision = Math.max(Date.now(), revision + 1);
+              await db.attempts.put({
+                courseId: stage.id,
+                sceneId,
+                sourceHash,
+                courseTitle: stage.name,
+                sceneTitle: scene.title,
+                code: draft.code,
+                savedAttempt: draft.savedAttempt,
+                assisted: draft.assisted,
+                status: draft.status,
+                updatedAt: nextRevision,
+              });
+              revision = nextRevision;
+            });
+            send({ kind: 'saved', requestId: data.requestId });
+          })
+          .catch(() => send({ kind: 'error' }));
+      }
+    };
+    window.addEventListener('message', listener);
+    send({ kind: 'request-ready' });
+    return () => {
+      disposed = true;
+      window.removeEventListener('message', listener);
+    };
+  }, [sceneId, entry.srcDoc]);
 
   // Register the postMessage callback for this scene (moved here from the
   // placeholder, since the iframe now lives in the host). Stable per scene:

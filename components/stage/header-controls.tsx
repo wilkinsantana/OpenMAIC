@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { LearningVisitRecorder } from '@/components/learning/progress-panel';
 import { NotebookPanel } from '@/components/learning/notebook-panel';
 import {
   Archive,
@@ -141,6 +142,7 @@ export function HeaderControls({
   // anchors identically too.
   return (
     <div className="flex items-center gap-4">
+      <LearningVisitRecorder />
       <div
         className={cn(
           'shrink-0 flex items-center gap-1 backdrop-blur-md shadow-sm rounded-full',

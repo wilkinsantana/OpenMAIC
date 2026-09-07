@@ -1,5 +1,6 @@
 'use client';
 
+import { ProgressPanel } from './progress-panel';
 import { useEffect, useRef, useState } from 'react';
 import { Dialog } from 'radix-ui';
 import { BookMarked, Bookmark, Clock3, Download, Upload, X } from 'lucide-react';
@@ -157,6 +158,12 @@ export function NotebookPanel({
             </Dialog.Close>
           </div>
           <div className="flex-1 space-y-4 overflow-y-auto p-4">
+            <ProgressPanel
+              onNavigateScene={(id) => {
+                setOpen(false);
+                onNavigateScene?.(id);
+              }}
+            />
             {notebook.loadError && (
               <div role="alert" className="text-sm text-destructive">
                 {t('learningNotebook.loadError')}{' '}
