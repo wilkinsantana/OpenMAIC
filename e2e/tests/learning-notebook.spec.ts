@@ -174,6 +174,10 @@ test('code exercise fills the classroom slot and places its number in the toolba
   const iframe = page.locator('iframe').filter({ visible: true }).first();
   const frame = iframe.contentFrame();
   await expect(frame.locator('[data-maic-scene-number]')).toHaveText('01');
+  await expect(frame.locator('#reset-btn + #run-btn + select')).toHaveAttribute(
+    'aria-label',
+    'Exercise progress',
+  );
   await expect(frame.locator('[data-maic-exercise-toolbar] > :last-child')).toHaveAttribute(
     'data-maic-scene-number',
     '',

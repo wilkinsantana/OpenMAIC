@@ -91,9 +91,9 @@ test('extends the authored toolbar without duplicating hints or reveal controls'
     'Need a Hint? (0/1)',
     'Hide hints',
     'Reveal Solution',
-    'Run & Verify',
     'Apply solution',
     'Restore my attempt',
+    'Run & Verify',
   ]);
   await expect(apply).toHaveCSS('min-height', '40px');
   await expect(frame.locator('#run-btn')).toHaveCSS('background-color', 'rgb(139, 92, 246)');

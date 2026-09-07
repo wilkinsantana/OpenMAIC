@@ -328,7 +328,7 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
       toolbar.setAttribute('data-maic-exercise-toolbar', '');
       if (header) header.setAttribute('data-maic-exercise-header', '');
       var run = nativeRun;
-      var ordered = [hint, toggleHints, show, run, apply, restore].filter(function (b) { return b && b.parentElement === toolbar; });
+      var ordered = [hint, toggleHints, show, apply, restore, (typeof reset !== 'undefined' ? reset : nativeReset), run, (typeof statusSelect !== 'undefined' ? statusSelect : null)].filter(function (b) { return b && b.parentElement === toolbar; });
       // Move the original nodes, preserving their handlers and hint counters.
       ordered.concat(Array.from(toolbar.children).filter(function (b) { return ordered.indexOf(b) < 0; })).forEach(function (b) { toolbar.appendChild(b); });
       if (run) run.setAttribute('data-maic-run', '');
