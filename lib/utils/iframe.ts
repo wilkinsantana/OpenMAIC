@@ -1,3 +1,8 @@
+import {
+  repairWidgetConfigJson,
+  exerciseSupportScript,
+  type ExerciseSupportLabels,
+} from '@/lib/interactive/exercise-support';
 import { injectIntoDocumentHead } from './html-document';
 
 /**
@@ -285,7 +290,8 @@ const ELEMENT_PICKER_SHIM = `<script data-iframe-element-picker-shim>
  * placed first so they run before the page's own scripts (error capture first, so
  * it also observes the storage shim).
  */
-export function patchHtmlForIframe(html: string): string {
+export function patchHtmlForIframe(html: string, exerciseLabels?: ExerciseSupportLabels): string {
+  html = repairWidgetConfigJson(html);
   const iframeCss = `<style data-iframe-patch>
   html, body {
     width: 100%;
@@ -303,5 +309,8 @@ export function patchHtmlForIframe(html: string): string {
   const injection =
     '\n' + ERROR_CAPTURE_SHIM + '\n' + ELEMENT_PICKER_SHIM + '\n' + STORAGE_SHIM + '\n' + iframeCss;
 
-  return injectIntoDocumentHead(html, injection);
+  return injectIntoDocumentHead(
+    html,
+    injection + (exerciseLabels ? exerciseSupportScript(exerciseLabels) : ''),
+  );
 }
