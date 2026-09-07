@@ -139,6 +139,10 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
     if(toolbar){
       actionBar=document.createElement('section');actionBar.setAttribute('data-maic-action-bar','');
       actionBar.style.cssText='display:block;flex:0 0 auto;box-sizing:border-box;width:100%;padding:10px 16px;margin:8px 0;border:1px solid #475569;border-radius:8px;background:#172033';
+      if(document.querySelector('[data-maic-exercise-shell]')) {
+        actionBar.style.width='calc(100% - 24px)';
+        actionBar.style.margin='8px 12px';
+      }
       if(topHeader)topHeader.insertAdjacentElement('afterend',actionBar);else document.body.prepend(actionBar);
       actionBar.appendChild(toolbar);
     }
