@@ -1,3 +1,5 @@
+import { buildExerciseDocument } from '../../lib/interactive/exercise-document';
+import { renderCodeExerciseHtml } from '@openmaic/generation/code-exercise';
 import { test, expect } from '@playwright/test';
 import { patchHtmlForIframe } from '../../lib/utils/iframe';
 import en from '../../lib/i18n/locales/en-US.json';
@@ -259,3 +261,164 @@ test('progressive hint control becomes the only solution control and plain hints
       .evaluate((el) => Boolean(el.nextElementSibling?.hasAttribute('data-maic-hints-area'))),
   ).toBe(true);
 });
+
+test('shared shell owns layout and runs structured code without executing a shown solution', async ({
+  page,
+}) => {
+  const config = {
+    type: 'code' as const,
+    exerciseVersion: 1 as const,
+    title: 'Squares',
+    description: 'Return the square of the input.',
+    language: 'javascript' as const,
+    starterCode: 'function square(x){return x}',
+    solution: 'function square(x){return x*x}',
+    hints: ['Multiply the input by itself.'],
+    testCases: [
+      {
+        id: 'positive',
+        description: 'Positive input',
+        code: 'assert(square(3)===9,"Expected nine")',
+      },
+    ],
+  };
+  await page.setContent(
+    '<iframe sandbox="allow-scripts" style="width:1100px;height:800px"></iframe>',
+  );
+  await page.locator('iframe').evaluate(
+    (frame, src) => {
+      (frame as HTMLIFrameElement).srcdoc = src;
+    },
+    buildExerciseDocument(renderCodeExerciseHtml(config), en.exerciseSupport),
+  );
+  const frame = page.frameLocator('iframe').first();
+  await expect(frame.locator('#description')).toHaveText(config.description);
+  await frame.getByRole('button', { name: 'Run & Verify', exact: true }).click();
+  await expect(frame.locator('.test[data-state="failed"]')).toHaveCount(1);
+  await frame.getByRole('button', { name: 'Show solution', exact: true }).click();
+  await expect(frame.locator('#code-input')).toHaveValue(config.starterCode);
+  await frame.getByRole('button', { name: 'Apply solution', exact: true }).click();
+  await frame.getByRole('button', { name: 'Run & Verify', exact: true }).click();
+  await expect(frame.locator('.test[data-state="passed"]')).toHaveCount(1);
+  await expect(frame.locator('[data-maic-action-bar]')).toHaveCount(1);
+  await page.screenshot({ path: '/tmp/openmaic-shared-shell.png' });
+});
+
+async function mountStructured(
+  page: import('@playwright/test').Page,
+  overrides: Record<string, unknown> = {},
+) {
+  const config = {
+    type: 'code',
+    exerciseVersion: 1,
+    title: 'Shared lesson',
+    description: 'Implement the function and verify the result.',
+    language: 'javascript',
+    starterCode: 'function value(){return 4}',
+    solution: 'function value(){return 4}',
+    hints: ['Inspect the result.'],
+    testCases: [{ id: 'value', description: 'Returns four', code: 'assert(value()===4)' }],
+    ...overrides,
+  };
+  await page.goto('/');
+  await page.setContent(
+    '<iframe sandbox="allow-scripts" style="width:100%;height:850px;border:0"></iframe>',
+  );
+  await page.locator('iframe').evaluate(
+    (el, html) => {
+      (el as HTMLIFrameElement).srcdoc = html;
+    },
+    buildExerciseDocument(renderCodeExerciseHtml(config as never), en.exerciseSupport),
+  );
+  return page.frameLocator('iframe').first();
+}
+
+test('DOM exercises isolate fixture layout and retain a working preview after verification', async ({
+  page,
+}) => {
+  const frame = await mountStructured(page, {
+    fixtureHtml:
+      '<style>body{max-width:200px}</style><button id="add">Add</button><p id="count">0</p>',
+    starterCode:
+      'function attach(){document.getElementById("add").onclick=()=>document.getElementById("count").textContent="1"}',
+    solution:
+      'function attach(){document.getElementById("add").onclick=()=>document.getElementById("count").textContent="1"}',
+    previewCode: 'attach();',
+    testCases: [
+      {
+        id: 'click',
+        description: 'Click updates the count',
+        code: 'attach();document.getElementById("add").click();assert(document.getElementById("count").textContent==="1")',
+      },
+    ],
+  });
+  await frame.getByRole('button', { name: 'Run & Verify', exact: true }).click();
+  await expect(frame.locator('.test[data-state="passed"]')).toHaveCount(1);
+  const preview = frame.frameLocator('#preview');
+  await preview.getByRole('button', { name: 'Add' }).click();
+  await expect(preview.locator('#count')).toHaveText('1');
+  expect(
+    await frame.locator('.workspace').evaluate((el) => el.getBoundingClientRect().width),
+  ).toBeGreaterThan(800);
+  await expect(frame.locator('.CodeMirror')).toBeVisible();
+});
+
+test('a runaway pure-code exercise can be stopped without losing the editor', async ({ page }) => {
+  const frame = await mountStructured(page, { starterCode: 'while(true){}' });
+  await frame.getByRole('button', { name: 'Run & Verify', exact: true }).click();
+  await frame.getByRole('button', { name: 'Stop', exact: true }).click();
+  await expect(frame.locator('#output')).toHaveText('Execution stopped.');
+  await expect(frame.getByRole('button', { name: 'Run & Verify', exact: true })).toBeEnabled();
+});
+
+test('legacy styles stay inside the runtime while the shared shell reports original tests', async ({
+  page,
+}) => {
+  const original = `<html><head><style>body{max-width:400px;margin:auto}header{height:300px}button{margin-left:200px}</style></head><body><header><h1>Old heading</h1></header><textarea id="code-input">return false</textarea><button id="run-btn" onclick="document.querySelector('.test-card').textContent='Test 1 PASSED';document.getElementById('output').textContent='Original runner finished'">Run tests</button><div class="test-card">Test 1 IDLE</div><pre id="output"></pre><script id="widget-config" type="application/json">{"type":"code","description":"Find the broken ID.","hints":["Look at the DOM"],"solution":"return true"}</script></body></html>`;
+  await page.goto('/');
+  await page.setContent(
+    '<iframe sandbox="allow-scripts" style="width:100%;height:850px;border:0"></iframe>',
+  );
+  await page.locator('iframe').evaluate(
+    (el, html) => {
+      (el as HTMLIFrameElement).srcdoc = html;
+    },
+    buildExerciseDocument(original, { ...en.exerciseSupport, sceneTitle: 'Legacy lesson' }),
+  );
+  const frame = page.frameLocator('iframe').first();
+  await expect(frame.locator('#description')).toHaveText('Find the broken ID.');
+  await frame.getByRole('button', { name: 'Run & Verify', exact: true }).click();
+  await expect(frame.locator('.test[data-state="passed"]')).toHaveCount(1);
+  await expect(frame.locator('#output')).toHaveText('Original runner finished');
+  expect(
+    await frame.locator('header').evaluate((el) => el.getBoundingClientRect().height),
+  ).toBeLessThan(100);
+  await expect(frame.locator('#legacy-frame')).toBeHidden();
+  await page.setViewportSize({ width: 540, height: 950 });
+  expect(await frame.locator('body').evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(
+    true,
+  );
+  await expect(frame.getByRole('button', { name: 'Run & Verify', exact: true })).toBeVisible();
+  await page.screenshot({ path: '/tmp/openmaic-shared-shell-mobile.png' });
+});
+
+for (const language of ['typescript', 'python'])
+  test(`structured ${language} executes in its isolated worker`, async ({ page }) => {
+    test.setTimeout(120000);
+    const source =
+      language === 'python' ? 'def value():\n    return 4' : 'function value(): number {return 4}';
+    const frame = await mountStructured(page, {
+      language,
+      starterCode: source,
+      solution: source,
+      testCases: [
+        {
+          id: 'value',
+          description: 'Returns four',
+          code: language === 'python' ? 'assert value() == 4' : 'assert(value()===4)',
+        },
+      ],
+    });
+    await frame.getByRole('button', { name: 'Run & Verify', exact: true }).click();
+    await expect(frame.locator('.test[data-state="passed"]')).toHaveCount(1, { timeout: 100000 });
+  });

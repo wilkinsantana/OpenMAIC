@@ -202,18 +202,32 @@ test('code exercise fills the classroom slot and places its number in the toolba
       .poll(async () => iframe.evaluate((el) => el.getBoundingClientRect().height))
       .toBeGreaterThan(size.height * 0.6);
   }
-  await frame.locator('#code-input').fill('My persistent solution');
-  await expect(frame.getByRole('status')).toContainText('Attempt saved');
+  await expect(frame.locator('.CodeMirror')).toBeVisible();
+  await frame.locator('.CodeMirror').evaluate((el) => {
+    (el as HTMLElement & { CodeMirror: { setValue(value: string): void } }).CodeMirror.setValue(
+      'My persistent solution',
+    );
+  });
+  await expect(frame.locator('p[role="status"]')).toContainText('Attempt saved');
   await page.reload();
   await expect(frame.locator('#code-input')).toHaveValue('My persistent solution');
   await frame.getByRole('button', { name: 'Apply solution', exact: true }).click();
-  await expect(frame.getByRole('status')).toContainText('Solution-assisted');
+  await expect(frame.locator('p[role="status"]')).toContainText('Solution-assisted');
   await page.reload();
   await expect(frame.locator('#code-input')).toHaveValue('Answer');
   await frame.getByRole('button', { name: 'Restore my attempt', exact: true }).click();
   await expect(frame.locator('#code-input')).toHaveValue('My persistent solution');
+  await expect
+    .poll(() =>
+      frame
+        .locator('.CodeMirror')
+        .evaluate((el) =>
+          (el as HTMLElement & { CodeMirror: { getValue(): string } }).CodeMirror.getValue(),
+        ),
+    )
+    .toBe('My persistent solution');
   await frame.getByLabel('Exercise progress').selectOption('completed');
-  await expect(frame.getByRole('status')).toContainText('Attempt saved');
+  await expect(frame.locator('p[role="status"]')).toContainText('Attempt saved');
   await page.screenshot({ path: '/tmp/openmaic-responsive-classroom.png', fullPage: true });
 });
 

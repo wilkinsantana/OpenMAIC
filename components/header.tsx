@@ -52,7 +52,8 @@ export function Header({
   );
   const scene = useStageStore((s) => s.scenes.find((scene) => scene.id === s.currentSceneId));
   const hasExerciseNumber =
-    scene?.content.type === 'interactive' && isCodeExercise(scene.content.html ?? '');
+    scene?.content.type === 'interactive' &&
+    (scene.content.widgetType === 'code' || isCodeExercise(scene.content.html ?? ''));
   const router = useRouter();
   const searchParams = useSearchParams();
   const exitLabel = t(classroomExitLabelKey(searchParams));

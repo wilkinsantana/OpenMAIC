@@ -5,7 +5,7 @@ import { useI18n } from '@/lib/hooks/use-i18n';
 import { useId, useMemo, useRef, useEffect } from 'react';
 import type { InteractiveContent } from '@/lib/types/stage';
 import { useInteractiveIframePool } from '@/lib/store/interactive-iframe-pool';
-import { patchHtmlForIframe } from '@/lib/utils/iframe';
+import { buildExerciseDocument } from '@/lib/interactive/exercise-document';
 import { visibleClientRect } from '@/lib/edit/visible-client-rect';
 
 interface InteractiveRendererProps {
@@ -25,6 +25,9 @@ interface InteractiveRendererProps {
 export function InteractiveRenderer({ content, sceneId }: InteractiveRendererProps) {
   const { t } = useI18n();
   const sceneNumber = useStageStore((s) => s.scenes.findIndex((scene) => scene.id === sceneId) + 1);
+  const sceneTitle = useStageStore(
+    (s) => s.scenes.find((scene) => scene.id === sceneId)?.title || '',
+  );
   const slotRef = useRef<HTMLDivElement>(null);
   // Unique per mounted placeholder instance — its visibility ownership token, so
   // a stale unmount during the mode cross-fade can't hide a newer instance.
@@ -38,37 +41,42 @@ export function InteractiveRenderer({ content, sceneId }: InteractiveRendererPro
   const patchedHtml = useMemo(
     () =>
       content.html
-        ? patchHtmlForIframe(content.html, {
-            sceneNumber,
-            dismiss: t('exerciseSupport.dismiss'),
-            hintsTitle: t('exerciseSupport.hintsTitle'),
-            solutionTitle: t('exerciseSupport.solutionTitle'),
-            hideHints: t('exerciseSupport.hideHints'),
-            showHints: t('exerciseSupport.showHints'),
-            progress: {
-              saved: t('learningProgress.saved'),
-              saving: t('learningProgress.saving'),
-              error: t('learningProgress.error'),
-              status: t('learningProgress.status'),
-              inProgress: t('learningProgress.inProgress'),
-              completed: t('learningProgress.completed'),
-              review: t('learningProgress.review'),
-              assisted: t('learningProgress.assisted'),
-              reset: t('learningProgress.reset'),
+        ? buildExerciseDocument(
+            content.html,
+            {
+              sceneNumber,
+              sceneTitle,
+              dismiss: t('exerciseSupport.dismiss'),
+              hintsTitle: t('exerciseSupport.hintsTitle'),
+              solutionTitle: t('exerciseSupport.solutionTitle'),
+              hideHints: t('exerciseSupport.hideHints'),
+              showHints: t('exerciseSupport.showHints'),
+              progress: {
+                saved: t('learningProgress.saved'),
+                saving: t('learningProgress.saving'),
+                error: t('learningProgress.error'),
+                status: t('learningProgress.status'),
+                inProgress: t('learningProgress.inProgress'),
+                completed: t('learningProgress.completed'),
+                review: t('learningProgress.review'),
+                assisted: t('learningProgress.assisted'),
+                reset: t('learningProgress.reset'),
+              },
+              title: t('exerciseSupport.title'),
+              hint: t('exerciseSupport.hint'),
+              show: t('exerciseSupport.show'),
+              hide: t('exerciseSupport.hide'),
+              apply: t('exerciseSupport.apply'),
+              restore: t('exerciseSupport.restore'),
+              missing: t('exerciseSupport.missing'),
+              unsupported: t('exerciseSupport.unsupported'),
+              preserved: t('exerciseSupport.preserved'),
+              restored: t('exerciseSupport.restored'),
             },
-            title: t('exerciseSupport.title'),
-            hint: t('exerciseSupport.hint'),
-            show: t('exerciseSupport.show'),
-            hide: t('exerciseSupport.hide'),
-            apply: t('exerciseSupport.apply'),
-            restore: t('exerciseSupport.restore'),
-            missing: t('exerciseSupport.missing'),
-            unsupported: t('exerciseSupport.unsupported'),
-            preserved: t('exerciseSupport.preserved'),
-            restored: t('exerciseSupport.restored'),
-          })
+            content.widgetType === 'code',
+          )
         : undefined,
-    [content.html, t, sceneNumber],
+    [content.html, content.widgetType, t, sceneNumber, sceneTitle],
   );
 
   // Register / activate / claim visibility while mounted; release (keep-alive) on

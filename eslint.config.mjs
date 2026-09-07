@@ -44,6 +44,7 @@ const eslintConfig = defineConfig([
     'packages/@openmaic/importer/src1/**',
     // Generated importer bundle copied into public/ by the sync script (postinstall):
     'public/vendor/**',
+    'public/exercise-runtime/codemirror/**',
     // Claude Code local files:
     '.claude/**',
     '.superpowers/**',

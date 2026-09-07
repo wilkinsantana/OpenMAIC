@@ -112,3 +112,6 @@ export type {
 } from './outline-types.js';
 
 export * from './prompts/index.js';
+
+export { parseCodeExercise, renderCodeExerciseHtml } from './code-exercise.js';
+export type { CodeExercise } from './code-exercise.js';

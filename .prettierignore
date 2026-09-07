@@ -29,3 +29,6 @@ out/
 
 # SVG arc helper (vendored declaration)
 lib/export/svg-arc-to-cubic-bezier.d.ts
+
+# Pinned third-party editor assets (retain upstream formatting)
+public/exercise-runtime/codemirror/

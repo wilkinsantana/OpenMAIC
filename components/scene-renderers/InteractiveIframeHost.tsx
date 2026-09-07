@@ -178,7 +178,7 @@ function PooledIframe({ sceneId, entry, visible }: PooledIframeProps) {
     if (
       !stage ||
       scene?.content.type !== 'interactive' ||
-      !isCodeExercise(scene.content.html ?? '')
+      (scene.content.widgetType !== 'code' && !isCodeExercise(scene.content.html ?? ''))
     )
       return;
     let disposed = false;
