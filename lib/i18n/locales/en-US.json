@@ -2098,5 +2098,32 @@
     "independent": "Independent attempt",
     "empty": "Start an exercise to save your progress here.",
     "continue": "Continue learning"
+  },
+  "courseTools": {
+    "voice": "Course narration voice",
+    "voiceNotice": "Choose the course teacher’s Kokoro voice. Saving affects new narration; regenerate to replace existing course audio. Keep the course open while it runs.",
+    "kokoro": "Kokoro voice",
+    "preview": "Preview voice",
+    "stopPreview": "Stop preview",
+    "saveVoice": "Save course voice",
+    "regenerate": "Regenerate course narration",
+    "stop": "Stop narration generation",
+    "voiceSaved": "Course voice saved. Existing narration is unchanged until regenerated.",
+    "voicing": "Generated {{done}} / {{total}} clips; {{failed}} failed.",
+    "voiceFinished": "Narration finished or stopped: {{done}} clips generated; {{failed}} failed.",
+    "failed": "The operation failed. Please try again.",
+    "expand": "Add a course module",
+    "expandNotice": "Append lessons to this course without replacing existing pages. Enter one topic per lesson, up to 30 per batch. Each module can build on the earlier levels. New pages use the current model and narration settings.",
+    "level": "Module level",
+    "beginner": "Beginner",
+    "intermediate": "Intermediate",
+    "advanced": "Advanced",
+    "topics": "Lesson topics (one per line)",
+    "resources": "Related resources or YouTube links (optional)",
+    "addModule": "Generate and append module",
+    "pause": "Pause module generation",
+    "generating": "Generating {{count}} new lessons…",
+    "generationFinished": "Generation finished or paused. Check the lesson list for results and any failed pages.",
+    "finishPending": "Finish or retry the pending lessons before adding another module."
   }
 }

@@ -46,59 +46,63 @@ export function ProgressPanel({ onNavigateScene }: { onNavigateScene?: (id: stri
   const records = [...latest.values()].filter((row) => all || row.courseId === stage?.id);
   return (
     <section className="space-y-3 border-t pt-4">
-      <h3 className="font-medium">{t('learningProgress.title')}</h3>
-      <p className="text-xs text-muted-foreground">{t('learningProgress.notice')}</p>
-      <label className="flex gap-2 text-xs">
-        <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} />
-        {t('learningProgress.all')}
-      </label>
-      <ul className="space-y-2">
-        {records.map((row) => (
-          <li
-            key={JSON.stringify([row.courseId, row.sceneId])}
-            className="rounded border p-2 text-sm"
-          >
+      <details>
+        <summary className="cursor-pointer font-medium">{t('learningProgress.title')}</summary>
+        <div className="mt-3 space-y-3">
+          <p className="text-xs text-muted-foreground">{t('learningProgress.notice')}</p>
+          <label className="flex gap-2 text-xs">
+            <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} />
+            {t('learningProgress.all')}
+          </label>
+          <ul className="space-y-2">
+            {records.map((row) => (
+              <li
+                key={JSON.stringify([row.courseId, row.sceneId])}
+                className="rounded border p-2 text-sm"
+              >
+                <button
+                  className="text-left font-medium underline"
+                  disabled={row.courseId === stage?.id && !scenes.some((s) => s.id === row.sceneId)}
+                  onClick={() =>
+                    row.courseId === stage?.id
+                      ? onNavigateScene?.(row.sceneId)
+                      : router.push(`/classroom/${encodeURIComponent(row.courseId)}`)
+                  }
+                >
+                  {row.sceneTitle}
+                </button>
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    row.status === 'completed'
+                      ? 'learningProgress.completed'
+                      : row.status === 'needs-review'
+                        ? 'learningProgress.review'
+                        : 'learningProgress.inProgress',
+                  )}{' '}
+                  · {t(row.assisted ? 'learningProgress.assisted' : 'learningProgress.independent')}
+                </p>
+              </li>
+            ))}
+          </ul>
+          {!records.length && (
+            <p className="text-xs text-muted-foreground">{t('learningProgress.empty')}</p>
+          )}
+          <h3 className="font-medium">{t('learningProgress.continue')}</h3>
+          {(visits ?? []).slice(0, 5).map((visit) => (
             <button
-              className="text-left font-medium underline"
-              disabled={row.courseId === stage?.id && !scenes.some((s) => s.id === row.sceneId)}
+              key={visit.courseId}
+              className="block text-left text-sm underline"
               onClick={() =>
-                row.courseId === stage?.id
-                  ? onNavigateScene?.(row.sceneId)
-                  : router.push(`/classroom/${encodeURIComponent(row.courseId)}`)
+                visit.courseId === stage?.id
+                  ? onNavigateScene?.(visit.sceneId)
+                  : router.push(`/classroom/${encodeURIComponent(visit.courseId)}`)
               }
             >
-              {row.sceneTitle}
+              {visit.courseTitle}
             </button>
-            <p className="text-xs text-muted-foreground">
-              {t(
-                row.status === 'completed'
-                  ? 'learningProgress.completed'
-                  : row.status === 'needs-review'
-                    ? 'learningProgress.review'
-                    : 'learningProgress.inProgress',
-              )}{' '}
-              · {t(row.assisted ? 'learningProgress.assisted' : 'learningProgress.independent')}
-            </p>
-          </li>
-        ))}
-      </ul>
-      {!records.length && (
-        <p className="text-xs text-muted-foreground">{t('learningProgress.empty')}</p>
-      )}
-      <h3 className="font-medium">{t('learningProgress.continue')}</h3>
-      {(visits ?? []).slice(0, 5).map((visit) => (
-        <button
-          key={visit.courseId}
-          className="block text-left text-sm underline"
-          onClick={() =>
-            visit.courseId === stage?.id
-              ? onNavigateScene?.(visit.sceneId)
-              : router.push(`/classroom/${encodeURIComponent(visit.courseId)}`)
-          }
-        >
-          {visit.courseTitle}
-        </button>
-      ))}
+          ))}
+        </div>
+      </details>
     </section>
   );
 }

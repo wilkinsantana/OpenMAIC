@@ -212,3 +212,89 @@ test('code exercise fills the classroom slot and places its number in the toolba
   await expect(frame.getByRole('status')).toContainText('Attempt saved');
   await page.screenshot({ path: '/tmp/openmaic-responsive-classroom.png', fullPage: true });
 });
+
+test('course tools save a narrator voice and append a module without replacing lessons', async ({
+  page,
+}) => {
+  await seed(page);
+  await page.getByRole('button', { name: 'Notebook', exact: true }).click();
+  const panel = page.getByTestId('learning-notebook');
+  await panel.getByText('Course narration voice', { exact: true }).click();
+  await panel.getByLabel('Kokoro voice', { exact: true }).selectOption('am_adam');
+  await panel.getByRole('button', { name: 'Save course voice', exact: true }).click();
+  await expect(
+    panel.getByText('Course voice saved. Existing narration is unchanged until regenerated.'),
+  ).toBeVisible();
+  await page.reload();
+  await page.getByRole('button', { name: 'Notebook', exact: true }).click();
+  await panel.getByText('Course narration voice', { exact: true }).click();
+  await expect(panel.getByLabel('Kokoro voice', { exact: true })).toHaveValue('am_adam');
+  const titles: string[] = [];
+  await page.route('**/api/generate/scene-content', async (route) => {
+    const body = route.request().postDataJSON();
+    titles.push(body.outline.title);
+    await route.fulfill({
+      json: {
+        success: true,
+        content: {
+          type: 'interactive',
+          html: '<html><body>New module lesson</body></html>',
+          url: '',
+        },
+      },
+    });
+  });
+  await page.route('**/api/generate/scene-actions', async (route) => {
+    const body = route.request().postDataJSON();
+    await route.fulfill({
+      json: {
+        success: true,
+        scene: {
+          id: body.outline.id,
+          stageId: body.stageId,
+          type: 'interactive',
+          title: body.outline.title,
+          order: body.outline.order,
+          content: body.content,
+          actions: [],
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      },
+    });
+  });
+  await panel.getByText('Add a course module', { exact: true }).click();
+  await panel.getByLabel('Module level', { exact: true }).selectOption('Advanced');
+  await panel
+    .getByLabel('Lesson topics (one per line)')
+    .fill('Debugging concurrency\nReviewing generated code');
+  await panel.getByRole('button', { name: 'Generate and append module', exact: true }).click();
+  await expect.poll(() => titles.length).toBe(2);
+  await expect(
+    panel.getByText(
+      'Generation finished or paused. Check the lesson list for results and any failed pages.',
+    ),
+  ).toBeVisible();
+  const saved = await page.evaluate(async (id) => {
+    const db = await new Promise<IDBDatabase>((resolve) => {
+      const r = indexedDB.open('maic-documents', 1);
+      r.onsuccess = () => resolve(r.result);
+    });
+    const result = await new Promise<any[]>((resolve) => {
+      const r = db.transaction('scenes').objectStore('scenes').index('by-stage').getAll(id);
+      r.onsuccess = () => resolve(r.result);
+    });
+    db.close();
+    return result.map((s) => s.title);
+  }, courseId);
+  expect(saved).toEqual(
+    expect.arrayContaining([
+      'First lesson',
+      'Second lesson',
+      'Advanced: Debugging concurrency',
+      'Advanced: Reviewing generated code',
+    ]),
+  );
+  expect(saved).toHaveLength(4);
+  await page.screenshot({ path: '/tmp/openmaic-course-tools.png', fullPage: true });
+});

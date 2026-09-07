@@ -226,7 +226,7 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
       else show.addEventListener('click',function(){assisted=true;saveProgress();});
       var reset = toolbar && toolbar.querySelector('#reset-btn');
       if (!reset) reset = button(progressLabels.reset,function(){ var a=editorAdapter(); if(a && initialCode !== null){savedAttempt=a.read();savedAdapter=a;a.write(initialCode);restore.disabled=false;progressStatus='in-progress';statusSelect.value=progressStatus;saveProgress();} });
-      else reset.addEventListener('click',function(){progressStatus='in-progress';statusSelect.value=progressStatus;setTimeout(saveProgress,0);});
+      else reset.addEventListener('click',function(){var a=editorAdapter();if(a){savedAttempt=a.read();savedAdapter=a;restore.disabled=false;}progressStatus='in-progress';statusSelect.value=progressStatus;setTimeout(saveProgress,0);},true);
       window.addEventListener('message',function(event){
         if(event.source !== window.parent || !event.data || event.data.__maicProgress !== true) return;
         var message=event.data;

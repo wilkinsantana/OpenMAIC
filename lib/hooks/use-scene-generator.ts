@@ -601,6 +601,8 @@ export interface UseSceneGeneratorOptions {
 }
 
 export interface GenerationParams {
+  /** An explicit append batch; completed and unrelated outlines are untouched. */
+  outlineIds?: string[];
   pdfImages?: PdfImage[];
   imageMapping?: ImageMapping;
   stageInfo: {
@@ -653,7 +655,11 @@ export function useSceneGenerator(options: UseSceneGeneratorOptions = {}) {
       // Determine pending outlines
       const completedOrders = new Set(scenes.map((s) => s.order));
       const pending = outlines
-        .filter((o) => !completedOrders.has(o.order))
+        .filter(
+          (o) =>
+            !completedOrders.has(o.order) &&
+            (!params.outlineIds || params.outlineIds.includes(o.id)),
+        )
         .sort((a, b) => a.order - b.order);
 
       if (pending.length === 0) {
@@ -669,7 +675,11 @@ export function useSceneGenerator(options: UseSceneGeneratorOptions = {}) {
 
       // Launch media generation in parallel — does not block content/action generation
       mediaAbortRef.current = new AbortController();
-      generateMediaForOutlines(outlines, stage.id, mediaAbortRef.current.signal).catch((err) => {
+      generateMediaForOutlines(
+        params.outlineIds ? pending : outlines,
+        stage.id,
+        mediaAbortRef.current.signal,
+      ).catch((err) => {
         log.warn('Media generation error:', err);
       });
 

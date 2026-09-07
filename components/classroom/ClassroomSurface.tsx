@@ -243,6 +243,8 @@ export function ClassroomSurface({
     }
 
     const { outlines, scenes, stage, generationComplete } = state;
+    // A course-tools append batch already owns generation in this classroom.
+    if (state.generationStatus === 'generating') return;
 
     // Check if there are pending outlines. A finished deck is frozen for
     // editing: deleting a slide leaves its outline orphaned, but that must not

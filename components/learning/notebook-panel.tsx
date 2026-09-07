@@ -1,5 +1,6 @@
 'use client';
 
+import { CourseTools } from './course-tools';
 import { ProgressPanel } from './progress-panel';
 import { useEffect, useRef, useState } from 'react';
 import { Dialog } from 'radix-ui';
@@ -132,8 +133,10 @@ export function NotebookPanel({
           <span className="hidden lg:inline">{t('learningNotebook.title')}</span>
         </button>
       </Dialog.Trigger>
-      <Dialog.Portal>
+      <Dialog.Portal forceMount>
         <Dialog.Content
+          forceMount
+          style={{ display: open ? undefined : 'none' }}
           data-testid="learning-notebook"
           onInteractOutside={(event) => event.preventDefault()}
           className="fixed inset-y-0 right-0 z-[60] flex w-full max-w-[440px] flex-col border-l bg-background text-foreground shadow-2xl outline-none"
@@ -158,6 +161,7 @@ export function NotebookPanel({
             </Dialog.Close>
           </div>
           <div className="flex-1 space-y-4 overflow-y-auto p-4">
+            <CourseTools />
             <ProgressPanel
               onNavigateScene={(id) => {
                 setOpen(false);
