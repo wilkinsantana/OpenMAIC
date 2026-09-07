@@ -2084,7 +2084,8 @@
     "dismiss": "Dismiss notification",
     "hintsTitle": "Hints and guidance",
     "hideHints": "Hide hints",
-    "showHints": "Show hints"
+    "showHints": "Show hints",
+    "solutionTitle": "Solution"
   },
   "learningProgress": {
     "saved": "Attempt saved in this browser",

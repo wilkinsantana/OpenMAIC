@@ -61,6 +61,7 @@ export interface ExerciseSupportLabels {
   sceneNumber?: number;
   dismiss?: string;
   hintsTitle?: string;
+  solutionTitle?: string;
   hideHints?: string;
   showHints?: string;
   progress?: {
@@ -137,6 +138,9 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
     var solutionPanel=document.getElementById('solution');
     var hintContents=document.createElement('div');hintArea.appendChild(hintContents);
     hintGroups.forEach(function(node){hintContents.appendChild(node);});
+    var solutionHeading=document.createElement('h2');solutionHeading.textContent=labels.solutionTitle || 'Solution';
+    solutionHeading.style.cssText='font:600 14px system-ui;margin:0 0 8px';solutionHeading.hidden=true;
+    hintArea.appendChild(solutionHeading);
     if(solutionPanel)hintArea.appendChild(solutionPanel);
     var hintsHidden=false;
     var oldDrawer=document.querySelector('.drawer-section');
@@ -214,7 +218,7 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
     dismiss.addEventListener('click',hideNotice);
     document.body.appendChild(notice);
     var hintOutput = document.createElement('div'); hintOutput.setAttribute('aria-live', 'polite');
-    var code = document.createElement('pre'); code.hidden = true; code.textContent = solution; code.id = 'reference-solution';
+    var code = document.createElement('pre'); code.style.maxHeight='none'; code.style.overflow='visible'; code.hidden = true; code.textContent = solution; code.id = 'reference-solution';
     function setStatus(text) {
       status.textContent=text; clearTimeout(toastTimer);
       notice.hidden=!text;notice.style.display=text?'flex':'none';
@@ -360,6 +364,8 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
       });
       toggleHints.disabled=!hasRevealed && !hintOutput.childElementCount;
       var solutionVisible=solutionPanel && !solutionPanel.hidden && getComputedStyle(solutionPanel).display!=='none';
+      hintHeading.hidden=!(hasRevealed && !hintsHidden) && !(hintOutput.childElementCount && !hintsHidden);
+      solutionHeading.hidden=!solutionVisible && code.hidden;
       hintArea.hidden=!(hasRevealed && !hintsHidden) && !solutionVisible && code.hidden && !(hintOutput.childElementCount && !hintsHidden);
       hintArea.style.display=hintArea.hidden?'none':'block';
     }

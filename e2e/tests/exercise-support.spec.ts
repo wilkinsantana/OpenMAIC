@@ -29,6 +29,7 @@ test('solution help repairs embedded JSON, preserves edits, and does not run cod
   await expect(help.getByText(config.hints[0])).toBeVisible();
   await help.getByRole('button', { name: 'Show solution', exact: true }).click();
   await expect(help.locator('pre')).toHaveText(config.solution);
+  await expect(frame.getByRole('heading', { name: 'Solution', exact: true })).toBeVisible();
   await help.getByRole('button', { name: 'Apply solution', exact: true }).click();
   await expect(frame.locator('#code-input')).toHaveValue(config.solution);
   await expect(help.getByRole('button', { name: 'Apply solution', exact: true })).toBeDisabled();

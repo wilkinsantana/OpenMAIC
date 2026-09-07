@@ -42,6 +42,7 @@ export function InteractiveRenderer({ content, sceneId }: InteractiveRendererPro
             sceneNumber,
             dismiss: t('exerciseSupport.dismiss'),
             hintsTitle: t('exerciseSupport.hintsTitle'),
+            solutionTitle: t('exerciseSupport.solutionTitle'),
             hideHints: t('exerciseSupport.hideHints'),
             showHints: t('exerciseSupport.showHints'),
             progress: {
