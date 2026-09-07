@@ -27,7 +27,13 @@ function download(content: string, type: string, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function NotebookPanel({ onNavigateScene }: { onNavigateScene?: (id: string) => unknown }) {
+export function NotebookPanel({
+  onNavigateScene,
+  compact = false,
+}: {
+  onNavigateScene?: (id: string) => unknown;
+  compact?: boolean;
+}) {
   const { t } = useI18n();
   const stage = useStageStore((state) => state.stage);
   const scenes = useStageStore((state) => state.scenes);
@@ -116,7 +122,10 @@ export function NotebookPanel({ onNavigateScene }: { onNavigateScene?: (id: stri
           type="button"
           title={t('learningNotebook.title')}
           aria-label={t('learningNotebook.title')}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-2 text-sm hover:bg-muted"
+          className={cn(
+            'inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3 text-sm hover:bg-muted',
+            compact ? 'h-8' : 'h-9',
+          )}
         >
           <BookMarked className="size-4" />
           <span className="hidden lg:inline">{t('learningNotebook.title')}</span>

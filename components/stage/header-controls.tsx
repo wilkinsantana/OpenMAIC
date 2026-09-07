@@ -145,8 +145,8 @@ export function HeaderControls({
         className={cn(
           'shrink-0 flex items-center gap-1 backdrop-blur-md shadow-sm rounded-full',
           compact
-            ? 'bg-zinc-100/70 dark:bg-zinc-800/70 border border-zinc-200/60 dark:border-zinc-700/60 px-1.5 py-1'
-            : 'bg-white/60 dark:bg-gray-800/60 border border-gray-100/50 dark:border-gray-700/50 px-2 py-1.5',
+            ? 'bg-zinc-100/70 dark:bg-zinc-800/70 border border-zinc-200/60 dark:border-zinc-700/60 h-8 px-1.5'
+            : 'bg-white/60 dark:bg-gray-800/60 border border-gray-100/50 dark:border-gray-700/50 h-9 px-2',
         )}
       >
         {/* Language — Radix DropdownMenu so its menu portals to body
@@ -213,7 +213,7 @@ export function HeaderControls({
         </button>
       </div>
 
-      <NotebookPanel onNavigateScene={onNavigateScene} />
+      <NotebookPanel onNavigateScene={onNavigateScene} compact={compact} />
 
       {/* Pro Switch — toggle property: on/off both clickable, not a
           one-way "Done" button. Disabled only when the current scene
