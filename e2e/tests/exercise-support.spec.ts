@@ -85,6 +85,15 @@ test('extends the authored toolbar without duplicating hints or reveal controls'
     .locator('.actions')
     .getByRole('button', { name: 'Apply solution', exact: true });
   await expect(apply).toHaveClass('secondary');
+  await expect(frame.locator('.actions > button')).toHaveText([
+    'Need a Hint? (0/1)',
+    'Reveal Solution',
+    'Run & Verify',
+    'Apply solution',
+    'Restore my attempt',
+  ]);
+  await expect(apply).toHaveCSS('min-height', '40px');
+  await expect(frame.locator('#run-btn')).toHaveCSS('background-color', 'rgb(139, 92, 246)');
   await apply.click();
   await expect(frame.locator('#code-input')).toHaveValue('reference code');
   await expect(frame.locator('#result')).toBeEmpty();

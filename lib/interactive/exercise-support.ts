@@ -155,7 +155,17 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
       style.textContent += ':host([hidden]){display:none}section{padding:8px 12px;border:0;background:transparent}.controls{display:none}';
       var header = toolbar.closest('header');
       (header || toolbar).insertAdjacentElement('afterend', host);
-      toolbar.style.flexWrap = 'wrap';
+      toolbar.setAttribute('data-maic-exercise-toolbar', '');
+      if (header) header.setAttribute('data-maic-exercise-header', '');
+      var run = toolbar.querySelector('#run-btn');
+      var ordered = [hint, show, run, apply, restore].filter(function (b) { return b && b.parentElement === toolbar; });
+      // Move the original nodes, preserving their handlers and hint counters.
+      ordered.concat(Array.from(toolbar.children).filter(function (b) { return ordered.indexOf(b) < 0; })).forEach(function (b) { toolbar.appendChild(b); });
+      if (run) run.setAttribute('data-maic-run', '');
+      hint.setAttribute('data-maic-hint', '');
+      var toolbarStyle = document.createElement('style');
+      toolbarStyle.textContent = '\\n[data-maic-exercise-header]{background:#111827!important;padding:12px 20px!important;border-bottom:1px solid #334155!important;display:flex!important;align-items:center!important;justify-content:space-between!important;flex-wrap:wrap!important;gap:12px!important;flex-shrink:0!important}\\n[data-maic-exercise-header]>:not([data-maic-exercise-toolbar]){min-width:0;flex:1 1 280px}\\n[data-maic-exercise-toolbar]{display:flex!important;align-items:center!important;justify-content:flex-end!important;flex-wrap:wrap!important;gap:8px!important;max-width:100%;margin-left:auto}\\n[data-maic-exercise-toolbar]>button{box-sizing:border-box!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;min-height:40px!important;padding:8px 14px!important;border:1px solid transparent!important;border-radius:6px!important;background:#334155!important;color:#e2e8f0!important;font:600 14px/1.4 system-ui,sans-serif!important;white-space:nowrap!important;cursor:pointer}\\n[data-maic-exercise-toolbar]>button[data-maic-hint]{background:#1e293b!important;border-color:#475569!important}\\n[data-maic-exercise-toolbar]>button[data-maic-run]{background:#8b5cf6!important;color:#fff!important}\\n[data-maic-exercise-toolbar]>button:disabled{opacity:.45!important;cursor:default!important}\\n[data-maic-exercise-toolbar]>button:focus-visible{outline:2px solid #67e8f9!important;outline-offset:2px!important}\\n@media(max-width:700px){[data-maic-exercise-toolbar]{justify-content:flex-start!important;margin-left:0;width:100%}[data-maic-exercise-header]{padding:12px!important}}';
+      document.head.appendChild(toolbarStyle);
     } else document.body.prepend(host);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true });
