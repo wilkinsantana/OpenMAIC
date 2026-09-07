@@ -178,3 +178,30 @@ test('bottom actions move to the top, hints toggle on the right, and notices dis
   await page.clock.fastForward(5100);
   await expect(frame.getByRole('status')).toBeHidden();
 });
+
+test('output shares spare height with tests without resizing their enclosing panel', async ({
+  page,
+}) => {
+  await page.setContent(
+    '<iframe sandbox="allow-scripts" style="width:900px;height:850px"></iframe>',
+  );
+  await page.locator('iframe').evaluate(
+    (frame, src) => {
+      (frame as HTMLIFrameElement).srcdoc = src;
+    },
+    patchHtmlForIframe(
+      `<html><body><div class="panel" style="height:700px;display:flex;flex-direction:column;overflow:hidden"><div style="height:300px;flex-shrink:0">Test results</div><div style="height:40px;flex-shrink:0">Execution Output</div><div id="output" style="max-height:200px;overflow:auto;white-space:pre-wrap">Ready</div></div><script type="application/json" id="widget-config">{"type":"code"}</script></body></html>`,
+      en.exerciseSupport,
+    ),
+  );
+  const frame = page.frameLocator('iframe');
+  const panel = frame.locator('.panel');
+  const output = frame.locator('#output');
+  await expect.poll(() => output.evaluate((el) => el.clientHeight)).toBe(360);
+  await output.evaluate((el) => {
+    el.textContent = 'Log line\n'.repeat(300);
+  });
+  expect(await panel.evaluate((el) => el.clientHeight)).toBe(700);
+  expect(await output.evaluate((el) => el.clientHeight)).toBe(360);
+  expect(await output.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+});

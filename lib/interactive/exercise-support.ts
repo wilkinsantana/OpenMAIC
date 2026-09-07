@@ -173,6 +173,15 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
       outputStyle.textContent = '[data-maic-output-column]> *{flex-shrink:0}[data-maic-output-card]{display:flex!important;flex-direction:column!important;flex:1 0 180px!important;min-height:180px;box-sizing:border-box}[data-maic-output-log]{flex:1 1 0!important;min-height:100px!important;max-height:none!important;overflow:auto!important}';
       document.head.appendChild(outputStyle);
     }
+    else if (outputCard && getComputedStyle(outputCard).display === 'flex' &&
+        getComputedStyle(outputCard).flexDirection === 'column') {
+      // Some lessons put tests and output in ONE already-sized panel. Grow
+      // only the log; do not change that panel's sizing or the test section.
+      output.style.setProperty('flex','1 1 0','important');
+      output.style.setProperty('min-height','120px','important');
+      output.style.setProperty('max-height','none','important');
+      output.style.setProperty('overflow','auto','important');
+    }
     var hintIndex = 0;
     var savedAttempt = null;
     var savedAdapter = null;
