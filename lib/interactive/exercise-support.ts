@@ -158,7 +158,7 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
     var hintContents=document.createElement('div');hintArea.appendChild(hintContents);
     hintGroups.forEach(function(node){hintContents.appendChild(node);});
     var solutionHeading=document.createElement('h2');solutionHeading.textContent=labels.solutionTitle || 'Solution';
-    solutionHeading.style.cssText='font:600 14px system-ui;margin:0 0 8px';solutionHeading.hidden=true;
+    solutionHeading.style.cssText='font:600 14px system-ui;margin:0 0 8px';solutionHeading.hidden=true;solutionHeading.setAttribute('data-maic-solution-heading','');
     hintArea.appendChild(solutionHeading);
     if(solutionPanel)hintArea.appendChild(solutionPanel);
     var hintsHidden=false;
@@ -231,6 +231,7 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
     var root = host.attachShadow({ mode: 'open' });
     var style = document.createElement('style');
     style.textContent = ':host{display:block;margin:12px;font:14px/1.5 system-ui;color:#e5e7eb}section{padding:14px;border:1px solid #475569;border-radius:10px;background:#172033}h2{font-size:15px;margin:0 0 10px}.controls{display:flex;flex-wrap:wrap;gap:8px}button{font:inherit;padding:6px 12px;border:1px solid #64748b;border-radius:6px;background:#26364c;color:#fff;cursor:pointer}button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:3px solid #67e8f9;outline-offset:2px}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:360px;overflow:auto;background:#0f172a;padding:12px}p{margin:8px 0 0}';
+    if(document.querySelector('[data-maic-exercise-shell]'))style.textContent+='pre{background:#08291f;color:#d1fae5;border:1px solid #23634f;border-left:3px solid #34d399;border-radius:6px;font:13px/1.65 ui-monospace,monospace}p{padding:10px 12px;background:#30234c;border-left:3px solid #a78bfa;border-radius:4px;color:#ede9fe}.cm-keyword{color:#ff79c6}.cm-def,.cm-variable-2{color:#8be9fd}.cm-string,.cm-string-2{color:#f1fa8c}.cm-number,.cm-atom{color:#bd93f9}.cm-comment{color:#a4aec6}.cm-property,.cm-variable{color:#f8f8f2}.cm-operator{color:#ff79c6}';
     root.appendChild(style);
     var section = document.createElement('section');
     var heading = document.createElement('h2'); heading.textContent = labels.title;
@@ -248,6 +249,12 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
     document.body.appendChild(notice);
     var hintOutput = document.createElement('div'); hintOutput.setAttribute('aria-live', 'polite');
     var code = document.createElement('pre'); code.style.maxHeight='none'; code.style.overflow='visible'; code.hidden = true; code.textContent = solution; code.id = 'reference-solution';
+    function colorSolution(){
+      if(!window.CodeMirror || !CodeMirror.runMode)return;
+      code.textContent='';
+      CodeMirror.runMode(solution,config.language==='python'?'python':config.language==='typescript'?'text/typescript':'javascript',code);
+    }
+    document.addEventListener('maic-syntax-ready',colorSolution);colorSolution();
     function setStatus(text) {
       status.textContent=text; clearTimeout(toastTimer);
       notice.hidden=!text;notice.style.display=text?'flex':'none';

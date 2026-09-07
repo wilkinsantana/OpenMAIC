@@ -374,7 +374,7 @@ test('a runaway pure-code exercise can be stopped without losing the editor', as
 test('legacy styles stay inside the runtime while the shared shell reports original tests', async ({
   page,
 }) => {
-  const original = `<html><head><style>body{max-width:400px;margin:auto}header{height:300px}button{margin-left:200px}</style></head><body><header><h1>Old heading</h1></header><textarea id="code-input">return false</textarea><button id="run-btn" onclick="document.querySelector('.test-card').textContent='Test 1 PASSED';document.getElementById('output').textContent='Original runner finished'">Run tests</button><div class="test-card">Test 1 IDLE</div><pre id="output"></pre><script id="widget-config" type="application/json">{"type":"code","description":"Find the broken ID.","hints":["Look at the DOM"],"solution":"return true"}</script></body></html>`;
+  const original = `<html><head><style>body{max-width:400px;margin:auto}header{height:300px}button{margin-left:200px}</style></head><body><header><h1>Old heading</h1></header><section class="mental-model"><p>The DOM returns null when an ID is missing.</p></section><section><h3>Target HTML</h3><pre>&lt;div id="user-status-badge"&gt;Offline&lt;/div&gt;</pre></section><textarea id="code-input">return false</textarea><button id="run-btn" onclick="document.querySelector('.test-card').textContent='Test 1 PASSED';document.getElementById('output').textContent='Original runner finished'">Run tests</button><div class="test-card">Test 1 IDLE</div><pre id="output"></pre><script id="widget-config" type="application/json">{"type":"code","description":"Find the broken ID.","hints":["Look at the DOM"],"solution":"return true"}</script></body></html>`;
   await page.goto('/');
   await page.setContent(
     '<iframe sandbox="allow-scripts" style="width:100%;height:850px;border:0"></iframe>',
@@ -387,9 +387,26 @@ test('legacy styles stay inside the runtime while the shared shell reports origi
   );
   const frame = page.frameLocator('iframe').first();
   await expect(frame.locator('#description')).toHaveText('Find the broken ID.');
+  await expect(frame.locator('#lesson-context')).toContainText('The DOM returns null');
+  await expect(frame.locator('#lesson-context pre')).toHaveText(
+    '<div id="user-status-badge">Offline</div>',
+  );
+  await expect(frame.locator('#lesson-context')).not.toContainText('return true');
+  await expect(frame.locator('#lesson-context')).not.toContainText('Test 1 IDLE');
   await frame.getByRole('button', { name: 'Run & Verify', exact: true }).click();
   await expect(frame.locator('.test[data-state="passed"]')).toHaveCount(1);
   await expect(frame.locator('#output')).toHaveText('Original runner finished');
+  await expect(frame.locator('.test-badge')).toHaveText('✓ Passed');
+  await expect(frame.locator('#test-summary')).toHaveText('1/1 Passing');
+  await expect(frame.locator('#output')).toHaveCSS('color', 'rgb(52, 211, 153)');
+  await frame.getByRole('button', { name: 'Show solution', exact: true }).click();
+  await expect(frame.locator('#reference-solution .cm-keyword')).toHaveText('return');
+  expect(
+    await frame
+      .locator('[data-maic-hints-area]')
+      .evaluate((el) => el.getBoundingClientRect().height),
+  ).toBeGreaterThan(70);
+  await page.screenshot({ path: '/tmp/openmaic-vivid-desktop.png' });
   expect(
     await frame.locator('header').evaluate((el) => el.getBoundingClientRect().height),
   ).toBeLessThan(100);

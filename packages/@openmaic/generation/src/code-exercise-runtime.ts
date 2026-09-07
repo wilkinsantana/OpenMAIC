@@ -151,6 +151,28 @@ const LEGACY_BRIDGE = String.raw`
     const output = document.querySelector('#output,#console-output,#output-log');
     send({ kind: 'results', rows, output: output?.textContent.slice(0, 100000) || '' });
   }
+  function lessonContext() {
+    const blocks = [];
+    let size = 0;
+    const excluded = /(?:^|[-_\s])(?:editor|codemirror|console|output|tests?|verification|assertions?|hints?|solution|controls|toolbar|actions)(?:$|[-_\s])/i;
+    function visit(node) {
+      if (blocks.length >= 60 || size >= 30000 || !node || node.nodeType !== 1) return;
+      if (/^(SCRIPT|STYLE|NOSCRIPT|TEXTAREA|INPUT|BUTTON|SELECT|IFRAME|SVG)$/.test(node.tagName)) return;
+      if (excluded.test(node.id + ' ' + (typeof node.className === 'string' ? node.className : ''))) return;
+      if (node.hidden || getComputedStyle(node).display === 'none') return;
+      const children = Array.from(node.children);
+      const semantic = /^(P|LI|PRE|H[1-6]|BLOCKQUOTE)$/.test(node.tagName);
+      const inlineOnly = children.every((child) => /^(SPAN|STRONG|B|EM|I|CODE|BR|A|SMALL)$/.test(child.tagName));
+      if (semantic || inlineOnly) {
+        const text = (node.innerText || node.textContent || '').trim();
+        if (!text || blocks.some((b) => b.text === text)) return;
+        size += text.length;
+        blocks.push({ kind: node.tagName === 'PRE' ? 'code' : /^H[1-6]$/.test(node.tagName) ? 'heading' : 'text', text: text.slice(0, 10000) });
+      } else children.forEach(visit);
+    }
+    visit(document.body);
+    return blocks;
+  }
   let initialized = false;
   function ready() {
     if (initialized) return;
@@ -174,6 +196,7 @@ const LEGACY_BRIDGE = String.raw`
       code: ed.read(),
       title: document.querySelector('h1,h2')?.textContent || '',
       description,
+      context: lessonContext(),
       hints: Array.isArray(config.hints) ? config.hints : [],
       solution: config.solution || reference?.textContent || '',
       language: config.language || '',
@@ -271,6 +294,7 @@ export const CODE_EXERCISE_RUNTIME =
       Promise.all([
         script('/exercise-runtime/codemirror/javascript.js'),
         script('/exercise-runtime/codemirror/python.js'),
+        script('/exercise-runtime/codemirror/runmode.js'),
       ]),
     )
     .then(() => {
@@ -287,6 +311,7 @@ export const CODE_EXERCISE_RUNTIME =
         indentUnit: 2,
       });
       cm.getInputField().setAttribute('aria-label', 'Exercise code');
+      document.dispatchEvent(new Event('maic-syntax-ready'));
       cm.on('change', () => {
         code.value = cm.getValue();
         code.dispatchEvent(new Event('input', { bubbles: true }));
@@ -312,14 +337,40 @@ export const CODE_EXERCISE_RUNTIME =
     Object.assign(config, next);
     $('widget-config').textContent = JSON.stringify(config);
   }
+  function paintTest(el, description, state = 'idle', message = '') {
+    el.dataset.state = state;
+    el.dataset.description = description;
+    const title = document.createElement('span');
+    title.className = 'test-description';
+    title.textContent = description.replace(/\s*(?:[—–]\s*)?(?:NOT RUN|PASSED|FAILED)\s*$/i, '').trim();
+    const badge = document.createElement('span');
+    badge.className = 'test-badge';
+    badge.textContent = state === 'passed' ? '✓ Passed' : state === 'failed' ? '✕ Failed' : state === 'running' ? 'Running…' : 'Not run';
+    el.replaceChildren(title, badge);
+    if (message) {
+      const detail = document.createElement('div');
+      detail.className = 'test-detail';
+      detail.textContent = String(message).slice(0, 4000);
+      el.appendChild(detail);
+    }
+  }
   function row(test) {
     const el = document.createElement('div');
     el.className = 'test';
     el.dataset.id = test.id;
-    el.dataset.state = 'idle';
-    el.textContent = test.description + ' — Not run';
+    paintTest(el, test.description, test.state || 'idle');
     tests.appendChild(el);
   }
+  function summarizeTests() {
+    const rows = Array.from(tests.querySelectorAll('.test'));
+    const passed = rows.filter((el) => el.dataset.state === 'passed').length;
+    const failed = rows.some((el) => el.dataset.state === 'failed');
+    $('test-summary').textContent = rows.length ? passed + '/' + rows.length + ' Passing' : '';
+    const state = failed ? 'failed' : rows.length && passed === rows.length ? 'passed' : 'idle';
+    $('test-summary').dataset.state = state;
+    output.dataset.state = state;
+  }
+  new MutationObserver(summarizeTests).observe(tests, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-state'] });
   (config.testCases || []).forEach(row);
   if (!tests.childElementCount) {
     tests.textContent = 'Run the exercise to see its checks.';
@@ -346,9 +397,7 @@ export const CODE_EXERCISE_RUNTIME =
     stop.hidden = false;
     output.textContent = 'Running…';
     Array.from(tests.children).forEach((el) => {
-      el.dataset.state = 'idle';
-      el.textContent =
-        (config.testCases || []).find((t) => t.id === el.dataset.id)?.description || el.textContent;
+      paintTest(el, el.dataset.description || el.textContent, 'running');
     });
     deadline = setTimeout(
       () => {
@@ -363,13 +412,8 @@ export const CODE_EXERCISE_RUNTIME =
     if (data.kind === 'test') {
       const el = Array.from(tests.children).find((e) => e.dataset.id === data.id);
       if (el) {
-        el.dataset.state = data.state;
         const test = config.testCases.find((t) => t.id === data.id);
-        el.textContent =
-          test.description +
-          ' — ' +
-          (data.state === 'passed' ? 'Passed' : 'Failed') +
-          (data.message ? '\n' + String(data.message).slice(0, 4000) : '');
+        paintTest(el, test.description, data.state, data.message);
       }
     } else if (data.kind === 'done' || data.kind === 'error') {
       stopRun();
@@ -436,6 +480,16 @@ export const CODE_EXERCISE_RUNTIME =
     const data = event.data;
     if (data.kind === 'ready') {
       loaded = true;
+      const context = $('lesson-context');
+      context.replaceChildren();
+      for (const block of Array.isArray(data.context) ? data.context.slice(0, 60) : []) {
+        if (!block || typeof block.text !== 'string' || block.text.trim() === String(data.description).trim() || block.text.trim() === String(data.title).trim()) continue;
+        const el = document.createElement(block.kind === 'code' ? 'pre' : block.kind === 'heading' ? 'h3' : 'p');
+        el.textContent = block.text.slice(0, 10000);
+        context.appendChild(el);
+      }
+      context.hidden = !context.childElementCount;
+
       starter = String(data.code || '');
       if (!edited) setCode(starter);
       if (cm && data.language)
@@ -463,9 +517,6 @@ export const CODE_EXERCISE_RUNTIME =
         tests.replaceChildren();
         for (const r of data.rows) {
           row(r);
-          const el = tests.lastElementChild;
-          el.textContent = r.description;
-          el.dataset.state = r.state;
         }
       }
       if (data.output) output.textContent = data.output;
