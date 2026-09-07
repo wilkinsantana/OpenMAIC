@@ -102,3 +102,31 @@ test('extends the authored toolbar without duplicating hints or reveal controls'
   await frame.getByRole('button', { name: 'Run & Verify', exact: true }).click();
   await expect(frame.locator('#result')).toHaveText('Ran');
 });
+
+test('console card fills spare column height while long output scrolls', async ({ page }) => {
+  const html = `<html><head><style>.workspace{display:flex;flex-direction:column;height:700px;gap:12px;overflow:auto}.panel-box{padding:14px}#output{max-height:120px;overflow:auto;white-space:pre-wrap}</style></head><body>
+    <section class="workspace"><div style="height:200px">Simulator and tests</div><div class="panel-box"><h3>Console Output</h3><div id="output">Ready</div></div><div id="hint" style="display:none;height:80px">Hint</div></section>
+    <script type="application/json" id="widget-config">{"type":"code"}</script></body></html>`;
+  await page.setContent(
+    '<iframe sandbox="allow-scripts" style="height:850px;width:900px"></iframe>',
+  );
+  await page.locator('iframe').evaluate(
+    (frame, src) => {
+      (frame as HTMLIFrameElement).srcdoc = src;
+    },
+    patchHtmlForIframe(html, en.exerciseSupport),
+  );
+  const frame = page.frameLocator('iframe');
+  const output = frame.locator('#output');
+  const before = await output.evaluate((el) => el.getBoundingClientRect().height);
+  expect(before).toBeGreaterThan(300);
+  await output.evaluate((el) => {
+    el.textContent = 'A long log line\n'.repeat(200);
+  });
+  expect(await output.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+  expect(await output.evaluate((el) => el.getBoundingClientRect().height)).toBeCloseTo(before, 0);
+  await frame.locator('#hint').evaluate((el) => {
+    el.style.display = 'block';
+  });
+  expect(await output.evaluate((el) => el.getBoundingClientRect().height)).toBeLessThan(before);
+});

@@ -93,6 +93,20 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
     var nativeShow = document.querySelector('button#solution-toggle-btn') || authoredButtons.find(function (b) { return /^(?:reveal|show|hide) solution$/i.test(b.textContent.trim()); });
     var anchor = nativeShow || nativeHint;
     var toolbar = anchor && anchor.parentElement;
+    // Let an authored console card consume unused space in its column.
+    // Keep a bounded scrolling log instead of growing with every output line.
+    var output = document.querySelector('#output, #console-output, #output-log');
+    var outputCard = output && output.parentElement;
+    var outputColumn = outputCard && outputCard.parentElement;
+    if (outputColumn && outputCard.matches('.panel-box, .console-panel, .output-panel') &&
+        getComputedStyle(outputColumn).display === 'flex' && getComputedStyle(outputColumn).flexDirection === 'column') {
+      outputColumn.setAttribute('data-maic-output-column', '');
+      outputCard.setAttribute('data-maic-output-card', '');
+      output.setAttribute('data-maic-output-log', '');
+      var outputStyle = document.createElement('style');
+      outputStyle.textContent = '[data-maic-output-column]> *{flex-shrink:0}[data-maic-output-card]{display:flex!important;flex-direction:column!important;flex:1 0 180px!important;min-height:180px;box-sizing:border-box}[data-maic-output-log]{flex:1 1 0!important;min-height:100px!important;max-height:none!important;overflow:auto!important}';
+      document.head.appendChild(outputStyle);
+    }
     var hintIndex = 0;
     var savedAttempt = null;
     var savedAdapter = null;
