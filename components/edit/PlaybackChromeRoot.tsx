@@ -1300,7 +1300,19 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
 
       return (
         target.closest(
-          ['input', 'textarea', 'select', '[role="slider"]', 'input[type="range"]'].join(', '),
+          [
+            'input',
+            'textarea',
+            'select',
+            '[role="slider"]',
+            'input[type="range"]',
+            '[role="tablist"]',
+            '[role="listbox"]',
+            '[role="menu"]',
+            '[role="tree"]',
+            'video',
+            'audio',
+          ].join(', '),
         ) !== null
       );
     }, []);
@@ -1309,7 +1321,14 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
       const onKeyDown = (event: KeyboardEvent) => {
         if (event.defaultPrevented) return;
         // Let modifier-key combos (Ctrl+C, Ctrl+S, etc.) pass through to the browser
-        if (event.ctrlKey || event.metaKey || event.altKey) return;
+        if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || event.isComposing)
+          return;
+        if (
+          document.querySelector(
+            '[role="dialog"][data-state="open"], [role="alertdialog"], [role="menu"][data-state="open"]',
+          )
+        )
+          return;
         if (
           isPresentationShortcutTarget(event.target) ||
           isPresentationShortcutTarget(document.activeElement)
@@ -1319,13 +1338,13 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
 
         switch (event.key) {
           case 'ArrowLeft':
-            if (!isPresenting) return;
+            if (whiteboardOpen || elementPickActive || event.repeat) return;
             event.preventDefault();
             handlePreviousScene();
             resetPresentationIdleTimer();
             break;
           case 'ArrowRight':
-            if (!isPresenting) return;
+            if (whiteboardOpen || elementPickActive || event.repeat) return;
             event.preventDefault();
             handleNextScene();
             resetPresentationIdleTimer();
@@ -1375,9 +1394,33 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
         }
       };
 
+      const onFrameKey = (event: MessageEvent) => {
+        if (
+          event.data?.__maicPageArrow !== true ||
+          !['ArrowLeft', 'ArrowRight'].includes(event.data.key)
+        )
+          return;
+        const frame = Array.from(document.querySelectorAll('iframe')).find(
+          (el) => el.contentWindow === event.source,
+        );
+        if (
+          !frame ||
+          frame.title !== `Interactive Scene ${currentSceneId}` ||
+          getComputedStyle(frame).visibility === 'hidden'
+        )
+          return;
+        onKeyDown(new KeyboardEvent('keydown', { key: event.data.key }));
+      };
       window.addEventListener('keydown', onKeyDown);
-      return () => window.removeEventListener('keydown', onKeyDown);
+      window.addEventListener('message', onFrameKey);
+      return () => {
+        window.removeEventListener('keydown', onKeyDown);
+        window.removeEventListener('message', onFrameKey);
+      };
     }, [
+      currentSceneId,
+      whiteboardOpen,
+      elementPickActive,
       chatSessionType,
       chatAreaCollapsed,
       handleNextScene,

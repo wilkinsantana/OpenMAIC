@@ -17,6 +17,17 @@ import { injectIntoDocumentHead } from './html-document';
  * replaces both storages with an in-memory implementation when the real ones are
  * inaccessible, keeping the sandbox intact while letting storage-using pages run.
  */
+const PAGE_ARROW_SHIM = `<script data-maic-page-arrows>
+window.addEventListener('keydown', function(event) {
+  if (!['ArrowLeft','ArrowRight'].includes(event.key) || event.defaultPrevented || event.repeat || event.isComposing || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+  var target = event.target;
+  if (target && (target.isContentEditable || target.closest('input,textarea,select,[contenteditable],.CodeMirror,.cm-editor,[role="slider"],[role="tablist"],[role="listbox"],[role="menu"],[role="tree"],video,audio'))) return;
+  if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return;
+  event.preventDefault();
+  window.parent.postMessage({__maicPageArrow:true,key:event.key}, '*');
+});
+</script>`;
+
 const STORAGE_SHIM = `<script data-iframe-storage-shim>
 (function () {
   function makeStore() {
@@ -311,6 +322,6 @@ export function patchHtmlForIframe(html: string, exerciseLabels?: ExerciseSuppor
 
   return injectIntoDocumentHead(
     html,
-    injection + (exerciseLabels ? exerciseSupportScript(exerciseLabels) : ''),
+    injection + PAGE_ARROW_SHIM + (exerciseLabels ? exerciseSupportScript(exerciseLabels) : ''),
   );
 }

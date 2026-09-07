@@ -302,3 +302,23 @@ test('course tools save a narrator voice and append a module without replacing l
   expect(saved).toHaveLength(4);
   await page.screenshot({ path: '/tmp/openmaic-course-tools.png', fullPage: true });
 });
+
+test('page arrows navigate in playback and inside lessons, but preserve note editing', async ({
+  page,
+}) => {
+  await seed(page);
+  await page.getByRole('heading', { name: 'First lesson', exact: true, level: 1 }).click();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('heading', { name: 'Second lesson', exact: true })).toBeVisible();
+  await page.frameLocator('iframe[title="Interactive Scene second"]').locator('h1').click();
+  await page.keyboard.press('ArrowLeft');
+  await expect(
+    page.getByRole('heading', { name: 'First lesson', exact: true, level: 1 }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Notebook', exact: true }).click();
+  await page.getByLabel('Your notes (Markdown)').fill('Keep my cursor here');
+  await page.keyboard.press('ArrowRight');
+  await expect(
+    page.getByRole('heading', { name: 'First lesson', exact: true, level: 1 }),
+  ).toBeVisible();
+});
