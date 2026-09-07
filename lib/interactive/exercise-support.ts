@@ -127,7 +127,6 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
     var oldToolbar = anchor && anchor.parentElement;
     var originalParents=[nativeHint,nativeShow,nativeRun,nativeReset].filter(Boolean).map(function(b){return b.parentElement;});
     var topHeader = document.querySelector('body > header, body > .header');
-    if(topHeader && !document.documentElement.hasAttribute('data-maic-exercise-shell'))topHeader.setAttribute('data-maic-exercise-header','');
     var topRow = topHeader && (topHeader.querySelector('.header-title-row, .badge-bar') || topHeader);
     var toolbar = topRow && (topRow.querySelector('.header-actions, .controls, .btn-group') || (oldToolbar && topRow.contains(oldToolbar) ? oldToolbar : null));
     if (anchor && !toolbar) {
