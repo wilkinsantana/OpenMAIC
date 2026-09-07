@@ -53,7 +53,7 @@ export const useNotebookStore = create<NotebookState>((set, get) => {
       if (loading) return loading;
       loading = (async () => {
         try {
-          const rows = await notebookDatabase().notes.toArray();
+          const rows = await notebookDatabase().list();
           set((state) => {
             const notes = { ...state.notes };
             const states = { ...state.states };

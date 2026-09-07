@@ -1,4 +1,4 @@
-import { db } from '@/lib/utils/database';
+import { getLegacyAudio } from '@/lib/media/durable-legacy-bytes';
 import { isConcreteMediaAddress } from './resolve-media-ref';
 import { withAssetUrl } from './use-asset-url';
 
@@ -15,7 +15,7 @@ import { withAssetUrl } from './use-asset-url';
 export async function resolveAudioBlob(audioId: string): Promise<Blob | null> {
   const pooled = await pooledAudioBlob(audioId);
   if (pooled) return pooled;
-  const record = await db.audioFiles.get(audioId);
+  const record = await getLegacyAudio(audioId);
   const bytes = record?.blob;
   // Zero-byte rows (evicted, or an empty fetch) are not playable narration:
   // report no bytes so callers keep the reference retryable instead of

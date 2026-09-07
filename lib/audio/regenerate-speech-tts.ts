@@ -1,3 +1,4 @@
+import { getLegacyAudio } from '@/lib/media/durable-legacy-bytes';
 /**
  * Per-speech managed-TTS helpers for the timeline editor.
  *
@@ -36,7 +37,7 @@ export async function resolveLegacySpeechAudioId(
 ): Promise<string | undefined> {
   if (action.audioId || action.audioInvalidated || !action.id) return undefined;
   const legacyId = speechAudioId(sceneOrder, action.id);
-  return (await db.audioFiles.get(legacyId)) ? legacyId : undefined;
+  return (await getLegacyAudio(legacyId)) ? legacyId : undefined;
 }
 
 /** Managed (server) TTS is on — browser-native TTS has no cached file to manage. */
@@ -47,13 +48,13 @@ export function isManagedTtsActive(): boolean {
 
 /** True if an audio blob is cached under this exact audioId. */
 export async function audioExists(audioId: string): Promise<boolean> {
-  return !!(await db.audioFiles.get(audioId));
+  return !!(await getLegacyAudio(audioId));
 }
 
 /** Existence for many audioIds in one IndexedDB round-trip. */
 export async function audioExistsBulk(audioIds: string[]): Promise<Set<string>> {
   if (audioIds.length === 0) return new Set();
-  const recs = await db.audioFiles.bulkGet(audioIds);
+  const recs = await Promise.all(audioIds.map(getLegacyAudio));
   const have = new Set<string>();
   recs.forEach((r, i) => {
     if (r) have.add(audioIds[i]);

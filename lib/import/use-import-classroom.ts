@@ -1,5 +1,7 @@
 'use client';
 
+import { putLegacyAudio, putLegacyMedia } from '@/lib/media/durable-legacy-bytes';
+
 import { useState, useCallback, useRef } from 'react';
 import { nanoid } from 'nanoid';
 import { toast } from 'sonner';
@@ -224,7 +226,7 @@ export async function materializeImportedAudio(
       voice: meta.voice,
       createdAt,
     };
-    await db.audioFiles.put(record);
+    await putLegacyAudio(record);
   }
   return { pathToId, sourceRefToId };
 }
@@ -272,7 +274,7 @@ export async function materializeImportedMedia(
     allocatedIds.push(mediaId);
     refToNewId.set(oldRef, mediaId);
 
-    await db.mediaFiles.put({
+    await putLegacyMedia({
       id: mediaFileKey(stageId, mediaId),
       stageId,
       type,
@@ -299,7 +301,7 @@ export async function materializeImportedMedia(
     if (!posterAssetId) {
       posterAssetId = nanoid();
       allocatedIds.push(posterAssetId);
-      await db.mediaFiles.put({
+      await putLegacyMedia({
         id: mediaFileKey(stageId, posterAssetId),
         stageId,
         type: 'image',

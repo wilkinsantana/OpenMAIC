@@ -1,4 +1,5 @@
-import { db, mediaFileKey, type MediaFileRecord } from '@/lib/utils/database';
+import { getLegacyMedia } from '@/lib/media/durable-legacy-bytes';
+import { mediaFileKey, type MediaFileRecord } from '@/lib/utils/database';
 import { useMediaGenerationStore } from '@/lib/store/media-generation';
 import { withAssetUrl } from './use-asset-url';
 import { lookupMediaTask } from './media-task-resolution';
@@ -121,7 +122,7 @@ export async function resolveStoredBytes(
   const record = options.record
     ? suppliedRow
     : options.loadCompatRow && stageId
-      ? await db.mediaFiles.get(mediaFileKey(stageId, effectiveRef)).catch(() => undefined)
+      ? await getLegacyMedia(mediaFileKey(stageId, effectiveRef)).catch(() => undefined)
       : undefined;
   // `suppliedRow` already carries the pre-await verdict, so it is NOT
   // re-examined here -- re-reading `error` off the live object is exactly the

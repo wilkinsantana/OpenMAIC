@@ -1,3 +1,4 @@
+import { getLegacyAudio } from '@/lib/media/durable-legacy-bytes';
 import {
   enumerateAssetManifest,
   type AssetKind,
@@ -35,7 +36,7 @@ export async function buildStageAssetManifest(
   await Promise.all(
     skeleton.entries.map(async (entry) => {
       if (entry.kind === 'audio') {
-        const row = await db.audioFiles.get(entry.ref).catch(() => undefined);
+        const row = await getLegacyAudio(entry.ref).catch(() => undefined);
         if (row) audioRows.set(entry.ref, row);
       } else {
         const row = await db.mediaFiles

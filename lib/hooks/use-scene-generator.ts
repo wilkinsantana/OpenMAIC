@@ -1,5 +1,7 @@
 'use client';
 
+import { putLegacyAudio } from '@/lib/media/durable-legacy-bytes';
+
 import { useCallback, useRef } from 'react';
 import { useStageStore } from '@/lib/store/stage';
 import { isSceneEditLocked } from '@/lib/edit/regen-lock';
@@ -471,7 +473,7 @@ export async function generateAndStoreTTS(
   // still persists and plays.
   const duration = measureAudioDuration(bytes, data.format) ?? undefined;
   const audioId = existingAudioId ?? requestId;
-  await db.audioFiles.put({
+  await putLegacyAudio({
     id: audioId,
     stageId,
     blob,

@@ -87,7 +87,8 @@ function authenticatePersistenceCredentials(
   // The learner key still partitions runtime sessions, which are genuinely
   // per-learner state. Production replaces this module with real session
   // verification and derives both from server-controlled claims.
-  return { key: SHARED_ASSET_PRINCIPAL, ...(learnerKey ? { learnerKey } : {}) };
+  const stableLearner = process.env.LOCAL_LEARNER_KEY || learnerKey;
+  return { key: SHARED_ASSET_PRINCIPAL, ...(stableLearner ? { learnerKey: stableLearner } : {}) };
 }
 
 export function authenticatePersistenceHeaders(headers: Headers): PersistencePrincipal | undefined {

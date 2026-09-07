@@ -1,4 +1,5 @@
 import Dexie, { type Table } from 'dexie';
+import { learningRequest, usesServerLearningStorage } from './server-storage';
 
 export interface LearningNote {
   courseId: string;
@@ -37,14 +38,35 @@ export class NotebookDatabase extends Dexie {
     this.version(1).stores({ notes: '[courseId+sceneId], courseId, updatedAt' });
   }
   async save(note: LearningNote, expectedRevision: number): Promise<void> {
+    if (usesServerLearningStorage()) {
+      await learningRequest('note', undefined, { record: note, expectedRevision });
+      return;
+    }
     await this.transaction('rw', this.notes, async () => {
       const existing = await this.notes.get([note.courseId, note.sceneId]);
       if ((existing?.revision ?? 0) !== expectedRevision) throw new NotebookConflictError();
       await this.notes.put(note);
     });
   }
+  async list(): Promise<LearningNote[]> {
+    if (!usesServerLearningStorage()) return this.notes.toArray();
+    await this.importMissing(await this.notes.toArray());
+    return learningRequest('note');
+  }
   /** Imports missing records only. Existing personal work is never overwritten. */
   async importMissing(notes: LearningNote[]): Promise<number> {
+    if (usesServerLearningStorage()) {
+      let count = 0;
+      for (const note of notes) {
+        if (await learningRequest('note', noteKey(note))) continue;
+        await learningRequest('note', undefined, {
+          record: { ...note, revision: Math.max(1, note.revision) },
+          expectedRevision: 0,
+        });
+        count++;
+      }
+      return count;
+    }
     return this.transaction('rw', this.notes, async () => {
       let imported = 0;
       for (const note of notes) {

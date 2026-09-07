@@ -1,4 +1,9 @@
-import { BrowserKVStore, HttpDocumentStore, type HttpDocumentHeadersHook } from '@openmaic/storage';
+import {
+  BrowserKVStore,
+  HttpDocumentStore,
+  HttpAssetStore,
+  type HttpDocumentHeadersHook,
+} from '@openmaic/storage';
 import { HttpRuntimeStore, type HttpRuntimeHeadersHook } from '@openmaic/storage/runtime/http';
 
 import {
@@ -8,6 +13,11 @@ import {
 } from '@/lib/document-store/config';
 import { assertRuntimeStorageConfigurable, configureRuntimeStorage } from '@/lib/runtime/config';
 import { getLearnerKey } from '@/lib/runtime/learner-key';
+
+import {
+  assertAssetPoolStorageConfigurable,
+  configureAssetPoolStorage,
+} from '@/lib/media/asset-pool-config';
 
 let deviceKv: BrowserKVStore | undefined;
 let learnerKeyPromise: Promise<string> | undefined;
@@ -20,6 +30,8 @@ export function getPersistenceLearnerKey(): Promise<string> {
   if (!isBrowserPersistenceEnabled()) {
     return Promise.reject(new Error('Browser persistence is not enabled'));
   }
+  if (process.env.NEXT_PUBLIC_LOCAL_LEARNER_KEY)
+    return Promise.resolve(process.env.NEXT_PUBLIC_LOCAL_LEARNER_KEY);
   return (learnerKeyPromise ??= getLearnerKey((deviceKv ??= new BrowserKVStore())).catch(
     (error) => {
       learnerKeyPromise = undefined;
@@ -62,8 +74,13 @@ if (isBrowserPersistenceEnabled()) {
   try {
     // All checks are mutation-free. Once they pass, the synchronous configure
     // calls cannot leave only a subset of the persistence seams configured.
+    assertAssetPoolStorageConfigurable();
     assertRuntimeStorageConfigurable();
     assertDocumentStorageConfigurable();
+    configureAssetPoolStorage({
+      serverBacked: true,
+      store: () => new HttpAssetStore({ baseUrl: '/api/persistence', headers }),
+    });
     configureRuntimeStorage(runtimeOptions);
     configureDocumentStorage(documentOptions);
   } catch (error) {

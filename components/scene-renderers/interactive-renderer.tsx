@@ -6,6 +6,7 @@ import { useId, useMemo, useRef, useEffect } from 'react';
 import type { InteractiveContent } from '@/lib/types/stage';
 import { useInteractiveIframePool } from '@/lib/store/interactive-iframe-pool';
 import { buildExerciseDocument } from '@/lib/interactive/exercise-document';
+import { usesServerLearningStorage } from '@/lib/learning/server-storage';
 import { visibleClientRect } from '@/lib/edit/visible-client-rect';
 
 interface InteractiveRendererProps {
@@ -52,7 +53,9 @@ export function InteractiveRenderer({ content, sceneId }: InteractiveRendererPro
               hideHints: t('exerciseSupport.hideHints'),
               showHints: t('exerciseSupport.showHints'),
               progress: {
-                saved: t('learningProgress.saved'),
+                saved: usesServerLearningStorage()
+                  ? 'Attempt saved on this computer'
+                  : t('learningProgress.saved'),
                 saving: t('learningProgress.saving'),
                 error: t('learningProgress.error'),
                 status: t('learningProgress.status'),

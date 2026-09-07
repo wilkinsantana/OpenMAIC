@@ -1,3 +1,4 @@
+import { putLegacyMedia } from '@/lib/media/durable-legacy-bytes';
 /**
  * Media Generation Orchestrator
  *
@@ -147,7 +148,7 @@ async function generateSingleMedia(
       // CDN path: server already uploaded to OSS
       if (result.ossUrl) {
         throwIfAborted(abortSignal);
-        await db.mediaFiles.put({
+        await putLegacyMedia({
           id: mediaFileKey(stageId, req.elementId),
           stageId,
           type: 'image',
@@ -166,7 +167,7 @@ async function generateSingleMedia(
       // Fallback: fetch blob via proxy-media
       throwIfAborted(abortSignal);
       const blob = await fetchAsBlob(result.url);
-      await db.mediaFiles.put({
+      await putLegacyMedia({
         id: mediaFileKey(stageId, req.elementId),
         stageId,
         type: 'image',
@@ -185,7 +186,7 @@ async function generateSingleMedia(
       // CDN path: server already uploaded to OSS
       if (result.ossUrl) {
         throwIfAborted(abortSignal);
-        await db.mediaFiles.put({
+        await putLegacyMedia({
           id: mediaFileKey(stageId, req.elementId),
           stageId,
           type: 'video',
@@ -210,7 +211,7 @@ async function generateSingleMedia(
       const posterBlob = result.poster
         ? await fetchAsBlob(result.poster).catch(() => undefined)
         : undefined;
-      await db.mediaFiles.put({
+      await putLegacyMedia({
         id: mediaFileKey(stageId, req.elementId),
         stageId,
         type: 'video',

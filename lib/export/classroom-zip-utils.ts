@@ -1,6 +1,7 @@
+import { getLegacyAudio, getLegacyMedia } from '@/lib/media/durable-legacy-bytes';
 import type { Action, DiscussionAction, SpeechAction } from '@/lib/types/action';
 import type { ManifestAction, MediaIndexEntry } from './classroom-zip-types';
-import { db, mediaFileKey } from '@/lib/utils/database';
+import { mediaFileKey } from '@/lib/utils/database';
 import type { AssetManifestEntry } from '@openmaic/dsl';
 import type { AudioFileRecord, MediaFileRecord } from '@/lib/utils/database';
 import type { Scene } from '@/lib/types/stage';
@@ -154,7 +155,7 @@ export async function collectAudioFiles(
     // A row with no usable bytes -- an evicted row (empty blob, no pool
     // resolve) -- must not ship an empty audio file.
     if (!blob || blob.size === 0) continue;
-    const record = await db.audioFiles.get(audioId);
+    const record = await getLegacyAudio(audioId);
     const canonical = canonicalArchiveMedia('audio', { extension: record?.format });
     const ext = canonical.extension;
     const resolved = (
@@ -192,7 +193,7 @@ export async function collectMediaFiles(
   const collected: CollectedMedia[] = [];
   for (const [index, entry] of entries.entries()) {
     const ref = entry.ref;
-    const record = await db.mediaFiles.get(mediaFileKey(stageId, ref)).catch(() => undefined);
+    const record = await getLegacyMedia(mediaFileKey(stageId, ref)).catch(() => undefined);
     const blob = await resolveStoredBytes(ref, {
       record,
       fetchPolicy: { requireOk: false, requireNonEmpty: true },

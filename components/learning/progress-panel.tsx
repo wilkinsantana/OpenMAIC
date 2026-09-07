@@ -4,7 +4,8 @@ import { useRouter } from 'next/navigation';
 import { liveQuery } from 'dexie';
 import type { ExerciseProgress, CourseVisit } from '@/lib/learning/progress';
 import { useStageStore } from '@/lib/store/stage';
-import { progressDatabase } from '@/lib/learning/progress';
+import { progressDatabase, saveVisit, listProgress } from '@/lib/learning/progress';
+import { usesServerLearningStorage } from '@/lib/learning/server-storage';
 import { useI18n } from '@/lib/hooks/use-i18n';
 
 export function LearningVisitRecorder() {
@@ -12,9 +13,12 @@ export function LearningVisitRecorder() {
   const sceneId = useStageStore((s) => s.currentSceneId);
   useEffect(() => {
     if (stage && sceneId)
-      void progressDatabase()
-        .visits.put({ courseId: stage.id, courseTitle: stage.name, sceneId, updatedAt: Date.now() })
-        .catch(() => {});
+      void saveVisit({
+        courseId: stage.id,
+        courseTitle: stage.name,
+        sceneId,
+        updatedAt: Date.now(),
+      }).catch(() => {});
   }, [stage, sceneId]);
   return null;
 }
@@ -27,6 +31,25 @@ export function ProgressPanel({ onNavigateScene }: { onNavigateScene?: (id: stri
   const [attempts, setAttempts] = useState<ExerciseProgress[]>([]);
   const [visits, setVisits] = useState<CourseVisit[]>([]);
   useEffect(() => {
+    if (usesServerLearningStorage()) {
+      let active = true;
+      const refresh = () => {
+        void listProgress()
+          .then(([a, v]) => {
+            if (active) {
+              setAttempts(a);
+              setVisits(v);
+            }
+          })
+          .catch(() => {});
+      };
+      refresh();
+      const timer = setInterval(refresh, 5000);
+      return () => {
+        active = false;
+        clearInterval(timer);
+      };
+    }
     const a = liveQuery(() =>
       progressDatabase().attempts.orderBy('updatedAt').reverse().toArray(),
     ).subscribe({ next: setAttempts, error: () => {} });
@@ -49,7 +72,11 @@ export function ProgressPanel({ onNavigateScene }: { onNavigateScene?: (id: stri
       <details>
         <summary className="cursor-pointer font-medium">{t('learningProgress.title')}</summary>
         <div className="mt-3 space-y-3">
-          <p className="text-xs text-muted-foreground">{t('learningProgress.notice')}</p>
+          <p className="text-xs text-muted-foreground">
+            {usesServerLearningStorage()
+              ? 'Saved on this computer, independently of browser storage.'
+              : t('learningProgress.notice')}
+          </p>
           <label className="flex gap-2 text-xs">
             <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} />
             {t('learningProgress.all')}

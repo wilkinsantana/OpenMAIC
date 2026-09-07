@@ -1,5 +1,7 @@
 'use client';
 
+import { getLegacyAudio } from '@/lib/media/durable-legacy-bytes';
+
 /**
  * App-side implementations of the video-timeline compiler's DI boundary
  * ({@link TimingProbe} / {@link AssetSource} from `lib/video-export/deps`).
@@ -262,7 +264,7 @@ export async function createVideoTimelineDeps(input: {
     // superseded narration) still exports what the classroom plays; the row's
     // own blob is the resolver's legacy fallback. The row read here supplies
     // duration/format/ossKey metadata for the compiler's sync lookups.
-    const record = await db.audioFiles.get(audioId);
+    const record = await getLegacyAudio(audioId);
     const blob = await resolveAudioBlob(audioId);
     if (blob)
       audioById.set(

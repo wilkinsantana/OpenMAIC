@@ -33,7 +33,7 @@ describe('persistence client bootstrap', () => {
     expect(assets.isAssetPoolStorageConfigured()).toBe(false);
   });
 
-  it('configures runtime and document HTTP stores without wiring the asset pool', async () => {
+  it('configures runtime, document, and asset HTTP stores', async () => {
     vi.stubEnv('NEXT_PUBLIC_PERSISTENCE', '1');
     vi.stubEnv('NEXT_PUBLIC_PERSISTENCE_TOKEN', 'test-dev-token');
     vi.stubGlobal('window', {});
@@ -49,7 +49,7 @@ describe('persistence client bootstrap', () => {
 
     expect(runtime.isRuntimeStorageConfigured()).toBe(true);
     expect(documents.isDocumentStorageConfigured()).toBe(true);
-    expect(assets.isAssetPoolStorageConfigured()).toBe(false);
+    expect(assets.isAssetPoolStorageConfigured()).toBe(true);
 
     const runtimeStore = runtime.getRuntimeStore();
     const documentStore = documents.getDocumentStore();
@@ -73,6 +73,7 @@ describe('persistence client bootstrap', () => {
 
     runtime.resetRuntimeStorageForTests();
     documents.resetDocumentStorageForTests();
+    assets.resetAssetPoolStorageForTests();
     expect(runtime.isRuntimeStorageConfigured()).toBe(false);
     expect(documents.isDocumentStorageConfigured()).toBe(false);
     expect(assets.isAssetPoolStorageConfigured()).toBe(false);

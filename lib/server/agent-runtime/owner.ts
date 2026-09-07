@@ -55,6 +55,9 @@ export function resolveRequestOwnerId(
   authenticatedOwnerId?: string,
 ): string {
   if (authenticatedOwnerId) return authenticatedOwnerId;
+  // Explicit single-user localhost deployment: identity survives browser-data clearing.
+  if (process.env.OPENMAIC_LOCAL_SINGLE_USER === '1' && process.env.LOCAL_LEARNER_KEY)
+    return process.env.LOCAL_LEARNER_KEY;
 
   const existingId = readCookie(req.headers, ANONYMOUS_COOKIE);
   if (existingId && UUID_V4.test(existingId)) return `anon:${existingId}`;
