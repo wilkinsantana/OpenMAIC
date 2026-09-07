@@ -1,5 +1,6 @@
 'use client';
 
+import { useStageStore } from '@/lib/store/stage';
 import { useI18n } from '@/lib/hooks/use-i18n';
 import { useId, useMemo, useRef, useEffect } from 'react';
 import type { InteractiveContent } from '@/lib/types/stage';
@@ -23,6 +24,7 @@ interface InteractiveRendererProps {
  */
 export function InteractiveRenderer({ content, sceneId }: InteractiveRendererProps) {
   const { t } = useI18n();
+  const sceneNumber = useStageStore((s) => s.scenes.findIndex((scene) => scene.id === sceneId) + 1);
   const slotRef = useRef<HTMLDivElement>(null);
   // Unique per mounted placeholder instance — its visibility ownership token, so
   // a stale unmount during the mode cross-fade can't hide a newer instance.
@@ -37,6 +39,7 @@ export function InteractiveRenderer({ content, sceneId }: InteractiveRendererPro
     () =>
       content.html
         ? patchHtmlForIframe(content.html, {
+            sceneNumber,
             title: t('exerciseSupport.title'),
             hint: t('exerciseSupport.hint'),
             show: t('exerciseSupport.show'),
@@ -49,7 +52,7 @@ export function InteractiveRenderer({ content, sceneId }: InteractiveRendererPro
             restored: t('exerciseSupport.restored'),
           })
         : undefined,
-    [content.html, t],
+    [content.html, t, sceneNumber],
   );
 
   // Register / activate / claim visibility while mounted; release (keep-alive) on

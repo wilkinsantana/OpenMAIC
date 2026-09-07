@@ -141,3 +141,58 @@ test('personal notes autosave, filter, navigate and export separately from the c
     true,
   );
 });
+
+test('code exercise fills the classroom slot and places its number in the toolbar', async ({
+  page,
+}) => {
+  await seed(page);
+  await page.evaluate(async (id) => {
+    const db = await new Promise<IDBDatabase>((resolve) => {
+      const request = indexedDB.open('maic-documents', 1);
+      request.onsuccess = () => resolve(request.result);
+    });
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction('scenes', 'readwrite');
+      const store = tx.objectStore('scenes');
+      const request = store.get([id, 'first']);
+      request.onsuccess = () => {
+        const scene = request.result;
+        scene.content.html = `<html><body><header><h2>Responsive exercise</h2><div><button id="hint-btn">Hint</button><button id="solution-toggle-btn">Show Solution</button><button id="run-btn">Run</button><button id="reset-btn">Reset</button></div></header><textarea id="code-input">Attempt</textarea><script id="widget-config" type="application/json">{"type":"code","hints":[],"solution":"Answer"}</script></body></html>`;
+        store.put(scene);
+      };
+      tx.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+    });
+  }, courseId);
+  await page.reload();
+  const iframe = page.locator('iframe').filter({ visible: true }).first();
+  const frame = iframe.contentFrame();
+  await expect(frame.locator('[data-maic-scene-number]')).toHaveText('01');
+  await expect(frame.locator('[data-maic-exercise-toolbar] > :last-child')).toHaveAttribute(
+    'data-maic-scene-number',
+    '',
+  );
+  for (const size of [
+    { width: 1440, height: 1100 },
+    { width: 800, height: 1000 },
+  ]) {
+    await page.setViewportSize(size);
+    await expect
+      .poll(async () => {
+        const bounds = await iframe.boundingBox();
+        const viewport = await frame
+          .locator('html')
+          .evaluate(() => ({ width: innerWidth, height: innerHeight }));
+        return bounds
+          ? Math.abs(bounds.width - viewport.width) + Math.abs(bounds.height - viewport.height)
+          : 999;
+      })
+      .toBeLessThan(3);
+    await expect
+      .poll(async () => iframe.evaluate((el) => el.getBoundingClientRect().height))
+      .toBeGreaterThan(size.height * 0.6);
+  }
+  await page.screenshot({ path: '/tmp/openmaic-responsive-classroom.png', fullPage: true });
+});

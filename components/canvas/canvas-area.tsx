@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, type ReactNode } from 'react';
+import { isCodeExercise } from '@/lib/interactive/exercise-support';
+import { useMemo, useCallback, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -63,6 +64,12 @@ export function CanvasArea({
   onCancelElementPick,
 }: CanvasAreaProps) {
   const { t } = useI18n();
+  const responsiveExercise = useMemo(
+    () =>
+      currentScene?.content.type === 'interactive' &&
+      isCodeExercise(currentScene.content.html ?? ''),
+    [currentScene],
+  );
   const inWorkbenchPanel = useInWorkbenchPanel();
   const showControls = mode === 'playback' && !whiteboardOpen;
   const showPlayHint =
@@ -101,7 +108,8 @@ export function CanvasArea({
       {/* Slide area — takes remaining space */}
       <div
         className={cn(
-          'flex-1 min-h-0 relative overflow-hidden flex items-center justify-center p-2 transition-colors duration-500',
+          'flex-1 min-h-0 relative overflow-hidden flex items-center justify-center transition-colors duration-500',
+          responsiveExercise ? 'p-0' : 'p-2',
           currentScene?.type === 'interactive'
             ? 'bg-blue-50/30 dark:bg-blue-900/10'
             : 'bg-gray-50/30 dark:bg-gray-900/30',
@@ -221,7 +229,7 @@ export function CanvasArea({
           </AnimatePresence>
 
           {/* Scene Number Badge */}
-          {currentScene && (
+          {currentScene && !responsiveExercise && (
             <div className="absolute top-4 right-4 text-gray-200 dark:text-gray-700 font-black text-4xl opacity-50 pointer-events-none select-none mix-blend-multiply dark:mix-blend-screen">
               {(currentSceneIndex + 1).toString().padStart(2, '0')}
             </div>

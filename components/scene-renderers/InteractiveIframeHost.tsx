@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
+import { isCodeExercise } from '@/lib/interactive/exercise-support';
 import { useWidgetIframeStore } from '@/lib/store/widget-iframe';
 import {
   useInteractiveIframePool,
@@ -232,7 +233,8 @@ function PooledIframe({ sceneId, entry, visible }: PooledIframeProps) {
 
   const rect = entry.rect;
   const clip = entry.clip ?? rect;
-  const viewport = rect ? fitGenUiViewport(rect) : null;
+  const responsive = useMemo(() => isCodeExercise(entry.srcDoc ?? ''), [entry.srcDoc]);
+  const viewport = rect ? (responsive ? { box: rect, scale: 1 } : fitGenUiViewport(rect)) : null;
   const visibleViewport = viewport && clip ? intersectClientBoxes(viewport.box, clip) : null;
   // Require a real measured box before showing — a null or zero-size rect means
   // the slot hasn't laid out yet; showing then would flash a 0x0 iframe pinned
@@ -263,8 +265,8 @@ function PooledIframe({ sceneId, entry, visible }: PooledIframeProps) {
     position: 'absolute',
     left: viewport && visibleViewport ? viewport.box.left - visibleViewport.left : 0,
     top: viewport && visibleViewport ? viewport.box.top - visibleViewport.top : 0,
-    width: GENUI_LOGICAL_WIDTH,
-    height: GENUI_LOGICAL_HEIGHT,
+    width: responsive ? (rect?.width ?? 0) : GENUI_LOGICAL_WIDTH,
+    height: responsive ? (rect?.height ?? 0) : GENUI_LOGICAL_HEIGHT,
     border: 0,
     transform: `scale(${viewport?.scale ?? 0})`,
     transformOrigin: 'top left',

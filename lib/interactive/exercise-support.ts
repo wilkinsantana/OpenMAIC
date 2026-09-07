@@ -43,7 +43,22 @@ export function repairWidgetConfigJson(html: string): string {
   return html;
 }
 
+/** Only code exercises opt into a responsive viewport; authored slides keep their canvas. */
+export function isCodeExercise(html: string): boolean {
+  const repaired = repairWidgetConfigJson(html);
+  const match =
+    /<script\b(?=[^>]*\bid\s*=\s*["']widget-config["'])(?=[^>]*\btype\s*=\s*["']application\/json["'])[^>]*>([\s\S]*?)<\/script\s*>/i.exec(
+      repaired,
+    );
+  try {
+    return Boolean(match && JSON.parse(match[1]).type === 'code');
+  } catch {
+    return false;
+  }
+}
+
 export interface ExerciseSupportLabels {
+  sceneNumber?: number;
   title: string;
   hint: string;
   show: string;
@@ -166,6 +181,13 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
       var toolbarStyle = document.createElement('style');
       toolbarStyle.textContent = '\\n[data-maic-exercise-header]{background:#111827!important;padding:12px 20px!important;border-bottom:1px solid #334155!important;display:flex!important;align-items:center!important;justify-content:space-between!important;flex-wrap:wrap!important;gap:12px!important;flex-shrink:0!important}\\n[data-maic-exercise-header]>:not([data-maic-exercise-toolbar]){min-width:0;flex:1 1 280px}\\n[data-maic-exercise-toolbar]{display:flex!important;align-items:center!important;justify-content:flex-end!important;flex-wrap:wrap!important;gap:8px!important;max-width:100%;margin-left:auto}\\n[data-maic-exercise-toolbar]>button{box-sizing:border-box!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;min-height:40px!important;padding:8px 14px!important;border:1px solid transparent!important;border-radius:6px!important;background:#334155!important;color:#e2e8f0!important;font:600 14px/1.4 system-ui,sans-serif!important;white-space:nowrap!important;cursor:pointer}\\n[data-maic-exercise-toolbar]>button[data-maic-hint]{background:#1e293b!important;border-color:#475569!important}\\n[data-maic-exercise-toolbar]>button[data-maic-run]{background:#8b5cf6!important;color:#fff!important}\\n[data-maic-exercise-toolbar]>button:disabled{opacity:.45!important;cursor:default!important}\\n[data-maic-exercise-toolbar]>button:focus-visible{outline:2px solid #67e8f9!important;outline-offset:2px!important}\\n@media(max-width:700px){[data-maic-exercise-toolbar]{justify-content:flex-start!important;margin-left:0;width:100%}[data-maic-exercise-header]{padding:12px!important}}';
       document.head.appendChild(toolbarStyle);
+      if (Number.isInteger(labels.sceneNumber) && labels.sceneNumber > 0) {
+        var number = document.createElement('span');
+        number.setAttribute('data-maic-scene-number', '');
+        number.textContent = String(labels.sceneNumber).padStart(2, '0');
+        number.style.cssText = 'flex-shrink:0;padding:0 8px;color:#94a3b8;font:700 18px/1.4 system-ui';
+        toolbar.appendChild(number);
+      }
     } else document.body.prepend(host);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true });
