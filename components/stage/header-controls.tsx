@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { NotebookPanel } from '@/components/learning/notebook-panel';
 import {
   Archive,
   Download,
@@ -41,6 +42,7 @@ import { cn } from '@/lib/utils';
 import type { StageMode } from '@/lib/types/stage';
 
 interface HeaderControlsProps {
+  readonly onNavigateScene?: (id: string) => unknown;
   readonly mode?: StageMode;
   readonly proModeActive?: boolean;
   readonly canEdit?: boolean;
@@ -70,6 +72,7 @@ interface HeaderControlsProps {
  * here without cross-instance leakage.
  */
 export function HeaderControls({
+  onNavigateScene,
   mode,
   proModeActive,
   canEdit,
@@ -209,6 +212,8 @@ export function HeaderControls({
           <Settings className="w-4 h-4 group-hover:rotate-90 transition-transform duration-500" />
         </button>
       </div>
+
+      <NotebookPanel onNavigateScene={onNavigateScene} />
 
       {/* Pro Switch — toggle property: on/off both clickable, not a
           one-way "Done" button. Disabled only when the current scene

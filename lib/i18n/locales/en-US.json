@@ -2031,5 +2031,43 @@
         "materialExtraction": null
       }
     }
+  },
+  "learningNotebook": {
+    "title": "Notebook",
+    "close": "Close notebook",
+    "privateNotice": "Personal notes for this browser. Separate from the course and never sent to the teacher AI.",
+    "currentSlide": "Note on current slide",
+    "editor": "Slide notes",
+    "bookmark": "Bookmark",
+    "reviewLater": "Review later",
+    "goToSlide": "Go to slide",
+    "noteLabel": "Your notes (Markdown)",
+    "placeholder": "What did you learn? What would you like to revisit?",
+    "missingScene": "This slide is no longer in the course. Your note has been kept.",
+    "otherCourse": "This note belongs to another course. Open that course to revisit its slide.",
+    "originalTitle": "Originally: {{title}}",
+    "saveError": "Not saved. Your draft is still here. Retry, or export a backup before reloading. Another tab may have changed this note.",
+    "saving": "Saving…",
+    "saved": "Saved in this browser",
+    "autosave": "Changes save automatically",
+    "loadError": "Could not open your notebook.",
+    "retry": "Retry",
+    "chooseSlide": "Select a course slide to start a note.",
+    "library": "Your learning library",
+    "search": "Search notes and slide titles",
+    "filter": {
+      "all": "All notes",
+      "bookmarks": "Bookmarks",
+      "review": "Review later"
+    },
+    "allCourses": "Include notes from other courses",
+    "empty": "No notes match this view.",
+    "noText": "Saved for later",
+    "backup": "Export backup",
+    "markdown": "Export view as Markdown",
+    "import": "Import backup",
+    "backupNotice": "Backup includes all personal notes. Import adds missing notes without overwriting existing ones. Course ZIPs do not include these notes.",
+    "imported": "Imported {{count}} notes. Existing notes were kept.",
+    "importError": "Could not import this notebook. Use a valid notebook JSON backup under 5 MB."
   }
 }

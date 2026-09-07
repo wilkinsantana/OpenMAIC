@@ -1,6 +1,10 @@
 # Personal learning notebook — discussion draft
 
-Status: proposal for maintainer discussion; not an implemented feature.
+Status: first local prototype implemented on `feat/learning-notebook`; upstream discussion and review pending.
+
+The prototype supports scene-level notes, bookmarks, review-later flags, search, navigation, Markdown export, and JSON backup/import. It stores personal records in a separate browser IndexedDB database, with revision checks against stale writers. Imports add missing records without overwriting existing notes. Notes are scoped to the browser origin; switching ports or browsers requires a backup transfer, and imported course copies with new IDs are not automatically relinked.
+
+Action-level bookmarks, deletion controls, account synchronization, and a public plugin SDK remain future work. The initial UI edits Markdown as plain text.
 
 ## Problem
 

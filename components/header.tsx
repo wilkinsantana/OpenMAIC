@@ -9,6 +9,7 @@ import { classroomExitLabelKey, exitClassroom } from '@/lib/workbench/classroom-
 import { HeaderControls } from './stage/header-controls';
 
 interface HeaderProps {
+  readonly onNavigateScene?: (id: string) => unknown;
   readonly currentSceneTitle: string;
   readonly mode?: StageMode;
   readonly proModeActive?: boolean;
@@ -32,6 +33,7 @@ interface HeaderProps {
 }
 
 export function Header({
+  onNavigateScene,
   currentSceneTitle,
   mode,
   proModeActive,
@@ -90,6 +92,7 @@ export function Header({
         {/* Standalone classroom keeps the full cluster. Workbench-attached
             classrooms omit both the global capsule and course share/export. */}
         <HeaderControls
+          onNavigateScene={onNavigateScene}
           mode={mode}
           proModeActive={proModeActive}
           canEdit={canEdit}

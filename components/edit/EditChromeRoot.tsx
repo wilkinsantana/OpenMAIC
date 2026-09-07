@@ -101,6 +101,7 @@ export function EditChromeRoot({ scene, isEditable, onToggleEditMode }: EditChro
 
   const headerControls = inWorkbenchPanel ? undefined : (
     <HeaderControls
+      onNavigateScene={(id) => useStageStore.getState().setCurrentSceneId(id)}
       mode="edit"
       canEdit={isEditable}
       onToggleEditMode={isMaicEditorEnabled() && !inWorkbenchPanel ? onToggleEditMode : undefined}
