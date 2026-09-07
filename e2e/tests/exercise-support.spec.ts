@@ -134,9 +134,7 @@ test('console card fills spare column height while long output scrolls', async (
   expect(await output.evaluate((el) => el.getBoundingClientRect().height)).toBeLessThan(before);
 });
 
-test('bottom actions move to the top, hints toggle on the right, and notices dismiss', async ({
-  page,
-}) => {
+test('bottom actions move to the top while authored help stays in its drawer', async ({ page }) => {
   await page.clock.install();
   const html = `<html><body><div class="header"><h1>Exercise</h1><div class="controls"><button id="run-btn">Run</button></div></div>
   <div class="workspace"><div class="panel"><textarea id="editor-textarea">attempt</textarea></div><div class="panel">Tests</div></div>
@@ -155,16 +153,15 @@ test('bottom actions move to the top, hints toggle on the right, and notices dis
   const frame = page.frameLocator('iframe');
   const top = frame.locator('[data-maic-exercise-toolbar]');
   await expect(top.getByRole('button', { name: /Reveal Hint/ })).toHaveCount(1);
-  await expect(frame.locator('.drawer-section')).toBeHidden();
   await expect(top.getByRole('button', { name: /Reveal Hint/ })).toHaveAttribute(
     'title',
     "Use hints if you're stuck!",
   );
   await top.getByRole('button', { name: /Reveal Hint/ }).click();
-  await expect(frame.locator('.workspace > .panel:last-child #hint-0')).toBeVisible();
+  await expect(frame.locator('.drawer-section #hint-0')).toBeVisible();
   await expect(frame.locator('#hint-0')).toBeVisible();
   await top.getByRole('button', { name: 'Reveal Solution', exact: true }).click();
-  await expect(frame.locator('.workspace > .panel:last-child #solution')).toBeVisible();
+  await expect(frame.locator('.drawer-section #solution')).toBeVisible();
   await top.getByRole('button', { name: 'Apply solution', exact: true }).click();
   await expect(frame.locator('#editor-textarea')).toHaveValue('answer');
   await frame.getByRole('button', { name: 'Dismiss notification', exact: true }).click();
@@ -202,7 +199,9 @@ test('output shares spare height with tests without resizing their enclosing pan
   expect(await output.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
 });
 
-test('legacy JavaScript-config exercises use the same toolbar and hints area', async ({ page }) => {
+test('legacy JavaScript-config exercises retain authored help within the original pane', async ({
+  page,
+}) => {
   await page.setContent(
     '<iframe sandbox="allow-scripts" style="width:1000px;height:800px"></iframe>',
   );
@@ -220,9 +219,9 @@ test('legacy JavaScript-config exercises use the same toolbar and hints area', a
   await expect(frame.locator('header').first()).toBeVisible();
   await expect(frame.getByRole('button', { name: /^(Hide|Show) hints$/ })).toHaveCount(0);
   await frame.getByRole('button', { name: 'Hint', exact: true }).click();
-  await expect(frame.locator('[data-maic-hints-area]')).toContainText('A useful hint');
+  await expect(frame.locator('.workspace > .pane > #hints-panel')).toContainText('A useful hint');
   await frame.getByRole('button', { name: 'View Solution', exact: true }).click();
-  await expect(frame.locator('[data-maic-hints-area]')).toContainText('reference');
+  await expect(frame.locator('.workspace > .pane > #solution')).toContainText('reference');
 });
 
 test('progressive hint control becomes the only solution control and plain hints can hide', async ({
@@ -244,7 +243,9 @@ test('progressive hint control becomes the only solution control and plain hints
   await expect(frame.getByRole('button', { name: /^(Hide|Show) hints$/ })).toHaveCount(0);
   await frame.getByRole('button', { name: 'Hint', exact: true }).click();
   await expect(frame.getByRole('button', { name: /show solution/i })).toHaveCount(1);
-  await expect(frame.locator('[data-maic-hints-area]')).toContainText('Inspect the event listener');
+  await expect(frame.locator('body > #hints-container')).toContainText(
+    'Inspect the event listener',
+  );
   expect(
     await frame
       .locator('[data-maic-action-bar]')
@@ -415,3 +416,33 @@ for (const language of ['typescript', 'python'])
     await frame.getByRole('button', { name: 'Run & Verify', exact: true }).click();
     await expect(frame.locator('.test[data-state="passed"]')).toHaveCount(1, { timeout: 100000 });
   });
+
+test('authored hints and solution keep their original containers and usable height', async ({
+  page,
+}) => {
+  const original = `<html><head><style>body{display:flex;flex-direction:column;height:600px}.workspace{flex:1;min-height:0}.native-help{padding:16px;background:rgb(30,41,59)}#hints-panel p{margin:0;line-height:24px}</style></head><body>
+<header><button id="hint-btn" onclick="document.querySelector('#hints-panel').hidden=false">Hint</button><button id="solution-btn" onclick="document.querySelector('#solution').hidden=false">Show solution</button><button id="run-btn">Run</button></header>
+<aside class="native-help"><div id="hints-panel" hidden><p>Keep this hint in its authored panel.</p><p>Second line of guidance.</p></div><pre id="solution" hidden>return true;</pre></aside>
+<div class="workspace"><textarea id="code-input">my attempt</textarea></div>
+<script id="widget-config" type="application/json">{"type":"code","hints":["A hint"],"solution":"return true;"}</script></body></html>`;
+  await page.goto('/');
+  await page.setContent(
+    '<iframe sandbox="allow-scripts" style="width:100%;height:650px"></iframe>',
+  );
+  await page.locator('iframe').evaluate(
+    (el, html) => {
+      (el as HTMLIFrameElement).srcdoc = html;
+    },
+    buildExerciseDocument(original, en.exerciseSupport),
+  );
+  const frame = page.frameLocator('iframe');
+  await frame.locator('#hint-btn').click();
+  await expect(frame.locator('.native-help > #hints-panel')).toBeVisible();
+  expect(
+    await frame.locator('#hints-panel').evaluate((el) => el.getBoundingClientRect().height),
+  ).toBeGreaterThanOrEqual(48);
+  await frame.locator('#solution-btn').click();
+  await expect(frame.locator('.native-help > #solution')).toBeVisible();
+  await expect(frame.locator('[data-maic-hints-area]')).toBeHidden();
+  await expect(frame.getByRole('button', { name: 'Apply solution', exact: true })).toBeVisible();
+});

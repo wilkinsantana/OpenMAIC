@@ -146,21 +146,22 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
       actionBar.appendChild(toolbar);
     }
     [nativeHint,nativeShow,nativeRun,nativeReset].forEach(function(b){if(b && toolbar)toolbar.appendChild(b);});
-    var rightPanel = document.querySelector('.workspace-pane, .side-section, .panel-right, .inspect-section, .right-panels, .right-column, .workspace > .panel:last-child, .workspace > .pane:last-child');
+    var manageAuthoredHelp = document.documentElement.hasAttribute('data-maic-exercise-shell');
+    var rightPanel = manageAuthoredHelp && document.querySelector('.workspace-pane, .side-section, .panel-right, .inspect-section, .right-panels, .right-column, .workspace > .panel:last-child, .workspace > .pane:last-child');
     var hintArea = document.createElement('section');
     hintArea.setAttribute('data-maic-hints-area','');
-    hintArea.style.cssText='flex:0 1 auto;min-height:0;max-height:min(32vh,320px);overflow:auto;box-sizing:border-box;border:1px solid #475569;border-radius:8px;padding:12px;margin-bottom:12px;background:#172033;color:#e2e8f0';
+    hintArea.style.cssText='flex:0 0 auto;min-height:0;max-height:min(32vh,320px);overflow:auto;box-sizing:border-box;border:1px solid #475569;border-radius:8px;padding:12px;margin-bottom:12px;background:#172033;color:#e2e8f0';
     var hintHeading=document.createElement('h2');hintHeading.textContent=labels.hintsTitle || labels.hint;hintHeading.style.cssText='font:600 14px system-ui;margin:0 0 8px';hintArea.appendChild(hintHeading);
-    var hintGroups=Array.from(document.querySelectorAll('#hints-panel, #hints-container, .hints-panel, .hints-list, .hints-card, #hint-box, #hints-wrapper, #hint-container, #hint-panel, .hint-box, .hint-container'));
+    var hintGroups=manageAuthoredHelp ? Array.from(document.querySelectorAll('#hints-panel, #hints-container, .hints-panel, .hints-list, .hints-card, #hint-box, #hints-wrapper, #hint-container, #hint-panel, .hint-box, .hint-container')) : [];
     hintGroups=hintGroups.filter(function(node){return !hintGroups.some(function(other){return other!==node && other.contains(node);});});
-    var solutionPanel=document.getElementById('solution');
+    var solutionPanel=manageAuthoredHelp ? document.getElementById('solution') : null;
     var hintContents=document.createElement('div');hintArea.appendChild(hintContents);
     hintGroups.forEach(function(node){hintContents.appendChild(node);});
     var solutionHeading=document.createElement('h2');solutionHeading.textContent=labels.solutionTitle || 'Solution';
     solutionHeading.style.cssText='font:600 14px system-ui;margin:0 0 8px';solutionHeading.hidden=true;solutionHeading.setAttribute('data-maic-solution-heading','');
     hintArea.appendChild(solutionHeading);
     if(solutionPanel)hintArea.appendChild(solutionPanel);
-    var oldDrawer=document.querySelector('.drawer-section');
+    var oldDrawer=manageAuthoredHelp && document.querySelector('.drawer-section');
     if(oldDrawer && !oldDrawer.querySelector('button,textarea,pre,.hint-item')){oldDrawer.hidden=true;oldDrawer.style.setProperty('display','none','important');}
     // A single hints destination on every page. Without a right column use a
     // predictable section immediately below the top action row.
@@ -409,6 +410,8 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
     function hasVisibleContent(node){
       if(node.nodeType===3)return Boolean(node.textContent.trim());
       if(node.nodeType!==1 || /^(SCRIPT|STYLE|TEMPLATE)$/.test(node.tagName))return false;
+      // Hidden authored help is still owned by the lesson and may open later.
+      if(!manageAuthoredHelp && node.matches('#solution, #hints-panel, #hints-container, .hints-panel, .hints-list, .hints-card, #hint-box, #hints-wrapper, #hint-container, #hint-panel, .hint-box, .hint-container'))return true;
       if(node.hidden || getComputedStyle(node).display==='none')return false;
       if(node.matches('input,textarea,button,select,img,svg,canvas,video,audio,iframe,[contenteditable]'))return true;
       return Array.from(node.childNodes).some(hasVisibleContent);
