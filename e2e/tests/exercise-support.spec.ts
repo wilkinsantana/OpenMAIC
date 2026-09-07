@@ -29,9 +29,7 @@ test('solution help repairs embedded JSON, preserves edits, and does not run cod
   const help = frame.locator('#maic-exercise-support');
   await help.getByRole('button', { name: 'Hint (0/1)' }).click();
   await expect(help.getByText(config.hints[0])).toBeVisible();
-  await help.getByRole('button', { name: 'Show solution', exact: true }).click();
-  await expect(help.locator('pre')).toHaveText(config.solution);
-  await expect(frame.getByRole('heading', { name: 'Solution', exact: true })).toBeVisible();
+  await expect(help.getByRole('button', { name: 'Show solution', exact: true })).toHaveCount(0);
   await help.getByRole('button', { name: 'Apply solution', exact: true }).click();
   await expect(frame.locator('#code-input')).toHaveValue(config.solution);
   await expect(help.getByRole('button', { name: 'Apply solution', exact: true })).toBeDisabled();
@@ -80,7 +78,7 @@ test('extends the authored toolbar without duplicating hints or reveal controls'
     patchHtmlForIframe(html, en.exerciseSupport),
   );
   const frame = page.frameLocator('iframe');
-  await expect(frame.locator('[data-maic-action-bar]').getByRole('button')).toHaveCount(6);
+  await expect(frame.locator('[data-maic-action-bar]').getByRole('button')).toHaveCount(5);
   await expect(frame.locator('#maic-exercise-support')).toBeHidden();
   await frame.getByRole('button', { name: /Need a Hint/ }).click();
   await expect(frame.locator('#hint')).toBeVisible();
@@ -92,7 +90,6 @@ test('extends the authored toolbar without duplicating hints or reveal controls'
   await expect(apply).toHaveClass('secondary');
   await expect(frame.locator('.actions > button')).toHaveText([
     'Need a Hint? (0/1)',
-    'Hide hints',
     'Reveal Solution',
     'Apply solution',
     'Restore my attempt',
@@ -165,9 +162,6 @@ test('bottom actions move to the top, hints toggle on the right, and notices dis
   );
   await top.getByRole('button', { name: /Reveal Hint/ }).click();
   await expect(frame.locator('.workspace > .panel:last-child #hint-0')).toBeVisible();
-  await top.getByRole('button', { name: 'Hide hints', exact: true }).click();
-  await expect(frame.locator('#hint-0')).toBeHidden();
-  await top.getByRole('button', { name: 'Show hints', exact: true }).click();
   await expect(frame.locator('#hint-0')).toBeVisible();
   await top.getByRole('button', { name: 'Reveal Solution', exact: true }).click();
   await expect(frame.locator('.workspace > .panel:last-child #solution')).toBeVisible();
@@ -223,11 +217,10 @@ test('legacy JavaScript-config exercises use the same toolbar and hints area', a
   );
   const frame = page.frameLocator('iframe');
   await expect(frame.locator('[data-maic-action-bar]')).toBeVisible();
-  await expect(frame.locator('[data-maic-exercise-header]')).toBeVisible();
+  await expect(frame.locator('header').first()).toBeVisible();
+  await expect(frame.getByRole('button', { name: /^(Hide|Show) hints$/ })).toHaveCount(0);
   await frame.getByRole('button', { name: 'Hint', exact: true }).click();
   await expect(frame.locator('[data-maic-hints-area]')).toContainText('A useful hint');
-  await frame.getByRole('button', { name: 'Hide hints', exact: true }).click();
-  await expect(frame.locator('[data-maic-hints-area]')).toBeHidden();
   await frame.getByRole('button', { name: 'View Solution', exact: true }).click();
   await expect(frame.locator('[data-maic-hints-area]')).toContainText('reference');
 });
@@ -248,12 +241,9 @@ test('progressive hint control becomes the only solution control and plain hints
     ),
   );
   const frame = page.frameLocator('iframe');
+  await expect(frame.getByRole('button', { name: /^(Hide|Show) hints$/ })).toHaveCount(0);
   await frame.getByRole('button', { name: 'Hint', exact: true }).click();
   await expect(frame.getByRole('button', { name: /show solution/i })).toHaveCount(1);
-  await expect(frame.getByRole('button', { name: 'Hide hints', exact: true })).toBeEnabled();
-  await frame.getByRole('button', { name: 'Hide hints', exact: true }).click();
-  await expect(frame.locator('[data-maic-hints-area]')).toBeHidden();
-  await frame.getByRole('button', { name: 'Show hints', exact: true }).click();
   await expect(frame.locator('[data-maic-hints-area]')).toContainText('Inspect the event listener');
   expect(
     await frame

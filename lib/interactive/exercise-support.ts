@@ -160,7 +160,6 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
     solutionHeading.style.cssText='font:600 14px system-ui;margin:0 0 8px';solutionHeading.hidden=true;solutionHeading.setAttribute('data-maic-solution-heading','');
     hintArea.appendChild(solutionHeading);
     if(solutionPanel)hintArea.appendChild(solutionPanel);
-    var hintsHidden=false;
     var oldDrawer=document.querySelector('.drawer-section');
     if(oldDrawer && !oldDrawer.querySelector('button,textarea,pre,.hint-item')){oldDrawer.hidden=true;oldDrawer.style.setProperty('display','none','important');}
     // A single hints destination on every page. Without a right column use a
@@ -272,17 +271,9 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
       var p = document.createElement('p'); p.textContent = hints[hintIndex++]; hintOutput.appendChild(p); host.hidden = false;
       hint.textContent = labels.hint + ' (' + hintIndex + '/' + hints.length + ')'; hint.disabled = hintIndex >= hints.length;
     }); if (!nativeHint) hint.disabled = !hints.length;
-    var toggleHints=button(labels.hideHints || 'Hide hints',function(){
-      hintsHidden=!hintsHidden;hintContents.hidden=hintsHidden;hintOutput.hidden=hintsHidden;
-      toggleHints.textContent=hintsHidden?(labels.showHints || 'Show hints'):(labels.hideHints || 'Hide hints');
-      toggleHints.setAttribute('aria-expanded',String(!hintsHidden));updateHintsVisibility();
-    });toggleHints.disabled=true;toggleHints.setAttribute('aria-expanded','true');
-    hint.addEventListener('click',function(){
-      hintsHidden=false;hintContents.hidden=false;hintOutput.hidden=false;
-      toggleHints.textContent=labels.hideHints || 'Hide hints';toggleHints.setAttribute('aria-expanded','true');
-      requestAnimationFrame(updateHintsVisibility);
-    });
+    hint.addEventListener('click',function(){requestAnimationFrame(updateHintsVisibility);});
     var show = nativeShow || button(labels.show, function () { code.hidden = !code.hidden; setStatus(status.textContent); show.textContent = code.hidden ? labels.show : labels.hide; show.setAttribute('aria-expanded', String(!code.hidden)); });
+    if (!nativeShow && !document.documentElement.hasAttribute('data-maic-exercise-shell')) show.remove();
     if (!nativeShow) { show.disabled = !solution; show.setAttribute('aria-expanded', 'false'); show.setAttribute('aria-controls', code.id); }
     var apply = button(labels.apply, function () {
       var adapter = editorAdapter();
@@ -376,7 +367,7 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
       toolbar.setAttribute('data-maic-exercise-toolbar', '');
       // The authored lesson header retains its own layout; actions are a sibling bar.
       var run = nativeRun;
-      var ordered = [hint, toggleHints, show, apply, restore, (typeof reset !== 'undefined' ? reset : nativeReset), run, (typeof statusSelect !== 'undefined' ? statusSelect : null)].filter(function (b) { return b && b.parentElement === toolbar; });
+      var ordered = [hint, show, apply, restore, (typeof reset !== 'undefined' ? reset : nativeReset), run, (typeof statusSelect !== 'undefined' ? statusSelect : null)].filter(function (b) { return b && b.parentElement === toolbar; });
       // Move the original nodes, preserving their handlers and hint counters.
       ordered.concat(Array.from(toolbar.children).filter(function (b) { return ordered.indexOf(b) < 0; })).forEach(function (b) { toolbar.appendChild(b); });
       if (run) run.setAttribute('data-maic-run', '');
@@ -401,11 +392,10 @@ export function exerciseSupportScript(labels: ExerciseSupportLabels): string {
         var items=node.querySelectorAll('.hint-item, .hint-content, .hint-card, .hint');
         return items.length?Array.from(items).some(function(item){return getComputedStyle(item).display!=='none' && !item.hidden && Boolean(item.textContent.trim());}):Array.from(node.querySelectorAll('p,li,div')).some(function(item){return !item.children.length && getComputedStyle(item).display!=='none' && !item.hidden && Boolean(item.textContent.trim());});
       });
-      toggleHints.disabled=!hasRevealed && !hintOutput.childElementCount;
       var solutionVisible=solutionPanel && !solutionPanel.hidden && getComputedStyle(solutionPanel).display!=='none';
-      hintHeading.hidden=!(hasRevealed && !hintsHidden) && !(hintOutput.childElementCount && !hintsHidden);
+      hintHeading.hidden=!(hasRevealed) && !(hintOutput.childElementCount);
       solutionHeading.hidden=!solutionVisible && code.hidden;
-      hintArea.hidden=!(hasRevealed && !hintsHidden) && !solutionVisible && code.hidden && !(hintOutput.childElementCount && !hintsHidden);
+      hintArea.hidden=!(hasRevealed) && !solutionVisible && code.hidden && !(hintOutput.childElementCount);
       hintArea.style.display=hintArea.hidden?'none':'block';
     }
     show.addEventListener('click',function(){requestAnimationFrame(updateHintsVisibility);});
